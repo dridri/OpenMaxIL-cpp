@@ -37,6 +37,7 @@ Resize::Resize( uint32_t width, uint32_t height, bool verbose )
 	resize.bAllowUpscaling = OMX_FALSE;
 	SetParameter( OMX_IndexParamResize, &resize );
 */
+	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
 

@@ -76,7 +76,9 @@ public:
 
 	Camera( uint32_t width, uint32_t height, uint32_t device_number = 0, bool high_speed = false, bool verbose = false );
 	~Camera();
+	virtual OMX_ERRORTYPE SetState( const State& st );
 
+	OMX_ERRORTYPE setFramerate( uint32_t fps );
 	OMX_ERRORTYPE setBrightness( uint32_t value );
 	OMX_ERRORTYPE setSharpness( uint32_t value );
 	OMX_ERRORTYPE setSaturation( uint32_t value );

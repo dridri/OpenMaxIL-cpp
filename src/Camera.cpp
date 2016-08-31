@@ -17,11 +17,26 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 	if ( high_speed ) {
 		HighSpeedMode();
 	}
+	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
 
 Camera::~Camera()
 {
+}
+
+
+OMX_ERRORTYPE Camera::SetState( const Component::State& st )
+{
+	OMX_ERRORTYPE err = IL::Component::SetState(st);
+	if ( err != OMX_ErrorNone ) {
+		return err;
+	}
+	OMX_CONFIG_PORTBOOLEANTYPE capture;
+	OMX_INIT_STRUCTURE( capture );
+	capture.nPortIndex = 71;
+	capture.bEnabled = OMX_TRUE;
+	return SetParameter( OMX_IndexConfigPortCapturing, &capture );
 }
 
 
@@ -192,10 +207,25 @@ int Camera::HighSpeedMode()
 }
 
 
+OMX_ERRORTYPE Camera::setFramerate( uint32_t fps )
+{
+	OMX_CONFIG_FRAMERATETYPE framerate;
+	OMX_INIT_STRUCTURE( framerate );
+	framerate.xEncodeFramerate = fps << 16;
+	framerate.nPortIndex = 70;
+	OMX_ERRORTYPE err = SetConfig( OMX_IndexConfigVideoFramerate, &framerate );
+	if ( err != OMX_ErrorNone ) {
+		return err;
+	}
+	framerate.nPortIndex = 71;
+	return SetConfig( OMX_IndexConfigVideoFramerate, &framerate );
+}
+
+
 OMX_ERRORTYPE Camera::setBrightness( uint32_t value )
 {
 	OMX_CONFIG_BRIGHTNESSTYPE brightness;
-	OMX_INIT_STRUCTURE(brightness);
+	OMX_INIT_STRUCTURE( brightness );
 	brightness.nPortIndex = OMX_ALL;
 	brightness.nBrightness = value;
 	return SetConfig( OMX_IndexConfigCommonBrightness, &brightness );
@@ -205,7 +235,7 @@ OMX_ERRORTYPE Camera::setBrightness( uint32_t value )
 OMX_ERRORTYPE Camera::setSharpness( uint32_t value )
 {
 	OMX_CONFIG_SHARPNESSTYPE sharpness;
-	OMX_INIT_STRUCTURE(sharpness);
+	OMX_INIT_STRUCTURE( sharpness );
 	sharpness.nPortIndex = OMX_ALL;
 	sharpness.nSharpness = value;
 	return SetConfig( OMX_IndexConfigCommonSharpness, &sharpness );
@@ -215,7 +245,7 @@ OMX_ERRORTYPE Camera::setSharpness( uint32_t value )
 OMX_ERRORTYPE Camera::setSaturation( uint32_t value )
 {
 	OMX_CONFIG_SATURATIONTYPE saturation;
-	OMX_INIT_STRUCTURE(saturation);
+	OMX_INIT_STRUCTURE( saturation );
 	saturation.nPortIndex = OMX_ALL;
 	saturation.nSaturation = value;
 	return SetConfig( OMX_IndexConfigCommonSaturation, &saturation );
@@ -225,7 +255,7 @@ OMX_ERRORTYPE Camera::setSaturation( uint32_t value )
 OMX_ERRORTYPE Camera::setContrast( uint32_t value )
 {
 	OMX_CONFIG_CONTRASTTYPE contrast;
-	OMX_INIT_STRUCTURE(contrast);
+	OMX_INIT_STRUCTURE( contrast );
 	contrast.nPortIndex = OMX_ALL;
 	contrast.nContrast = value;
 	return SetConfig( OMX_IndexConfigCommonContrast, &contrast );
@@ -235,7 +265,7 @@ OMX_ERRORTYPE Camera::setContrast( uint32_t value )
 OMX_ERRORTYPE Camera::setWhiteBalanceControl( WhiteBalControl value )
 {
 	OMX_CONFIG_WHITEBALCONTROLTYPE white_balance_control;
-	OMX_INIT_STRUCTURE(white_balance_control);
+	OMX_INIT_STRUCTURE( white_balance_control );
 	white_balance_control.nPortIndex = OMX_ALL;
 	white_balance_control.eWhiteBalControl = (OMX_WHITEBALCONTROLTYPE)value;
 	return SetConfig( OMX_IndexConfigCommonWhiteBalance, &white_balance_control );
@@ -245,7 +275,7 @@ OMX_ERRORTYPE Camera::setWhiteBalanceControl( WhiteBalControl value )
 OMX_ERRORTYPE Camera::setExposureControl( ExposureControl value )
 {
 	OMX_CONFIG_EXPOSURECONTROLTYPE exposure;
-	OMX_INIT_STRUCTURE(exposure);
+	OMX_INIT_STRUCTURE( exposure );
 	exposure.nPortIndex = OMX_ALL;
 	exposure.eExposureControl = (OMX_EXPOSURECONTROLTYPE)value;
 	return SetConfig( OMX_IndexConfigCommonExposure, &exposure );
@@ -255,7 +285,7 @@ OMX_ERRORTYPE Camera::setExposureControl( ExposureControl value )
 OMX_ERRORTYPE Camera::setExposureValue( uint16_t exposure_compensation, float aperture, uint32_t iso_sensitivity, uint32_t shutter_speed_us )
 {
 	OMX_CONFIG_EXPOSUREVALUETYPE exposure_value;
-	OMX_INIT_STRUCTURE(exposure_value);
+	OMX_INIT_STRUCTURE( exposure_value );
 	exposure_value.nPortIndex = OMX_ALL;
 	exposure_value.xEVCompensation = exposure_compensation << 16;
 	exposure_value.nApertureFNumber = ( (uint32_t)( aperture * 1000.0f ) << 16 ) / 1000;

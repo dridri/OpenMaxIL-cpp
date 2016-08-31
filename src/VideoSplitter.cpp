@@ -10,6 +10,7 @@ using namespace IL;
 VideoSplitter::VideoSplitter( bool verbose )
 	: Component( "OMX.broadcom.video_splitter", { 250 }, { 251, 252, 253, 254 }, verbose )
 {
+	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
 

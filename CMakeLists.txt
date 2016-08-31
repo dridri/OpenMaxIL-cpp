@@ -21,7 +21,6 @@ set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -mfloat-abi=hard -Wl,-
 set( CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -mfloat-abi=hard -Wl,--unresolved-symbols=ignore-in-shared-libs -L/opt/vc/lib/ -Wl,-rpath=/opt/vc/lib" )
 set( CMAKE_LINKER_FLAGS "${CMAKE_LD_FLAGS}" )
 
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wuninitialized -std=gnu11 -fgnu89-inline" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wuninitialized -std=gnu++11 -Wno-pmf-conversions -Wno-unused-result" )
 set( CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -Wall -std=gnu11" )
 set( CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -Wall -std=gnu11" )
@@ -35,8 +34,14 @@ set( SOURCES
 	src/Component.cpp
 	src/Camera.cpp
 	src/NullSink.cpp
+	src/Resize.cpp
+	src/VideoSplitter.cpp
+	src/VideoRender.cpp
+	src/VideoEncode.cpp
 )
 
 add_library( "OpenMaxIL++" ${SOURCES} )
 
 target_link_libraries( "OpenMaxIL++" -lopenmaxil -lbcm_host -lvcos -lvchiq_arm -lrt -lpthread -ldl )
+
+add_subdirectory( samples )
