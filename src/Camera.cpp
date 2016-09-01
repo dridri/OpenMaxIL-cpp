@@ -134,8 +134,8 @@ int Camera::HighSpeedMode()
 
 	OMX_CONFIG_ZEROSHUTTERLAGTYPE zero_shutter;
 	OMX_INIT_STRUCTURE( zero_shutter );
-// 	zero_shutter.bZeroShutterMode = OMX_TRUE;
-	zero_shutter.bZeroShutterMode = OMX_FALSE; // TBD ??
+	zero_shutter.bZeroShutterMode = OMX_TRUE;
+// 	zero_shutter.bZeroShutterMode = OMX_FALSE; // TBD ??
 	zero_shutter.bConcurrentCapture = OMX_TRUE;
 	SetParameter( OMX_IndexParamCameraZeroShutterLag, &zero_shutter );
 
@@ -165,7 +165,7 @@ int Camera::HighSpeedMode()
 // 	pool.nInputStillsWidth = WIDTH;
 // 	pool.nInputStillsHeight = HEIGHT;
 // 	pool.eInputStillsType = OMX_COLOR_FormatYUV420PackedPlanar;
-// 	SetParameter( OMX_IndexParamCameraImagePool, &pool ); FIXME
+	SetParameter( OMX_IndexParamCameraImagePool, &pool );
 
 	OMX_PARAM_CAMERACAPTUREMODETYPE captureMode;
 	OMX_INIT_STRUCTURE( captureMode );
@@ -242,7 +242,7 @@ OMX_ERRORTYPE Camera::setSharpness( uint32_t value )
 }
 
 
-OMX_ERRORTYPE Camera::setSaturation( uint32_t value )
+OMX_ERRORTYPE Camera::setSaturation( int32_t value )
 {
 	OMX_CONFIG_SATURATIONTYPE saturation;
 	OMX_INIT_STRUCTURE( saturation );
@@ -252,7 +252,7 @@ OMX_ERRORTYPE Camera::setSaturation( uint32_t value )
 }
 
 
-OMX_ERRORTYPE Camera::setContrast( uint32_t value )
+OMX_ERRORTYPE Camera::setContrast( int32_t value )
 {
 	OMX_CONFIG_CONTRASTTYPE contrast;
 	OMX_INIT_STRUCTURE( contrast );

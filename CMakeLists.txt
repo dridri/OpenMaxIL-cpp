@@ -38,6 +38,7 @@ set( SOURCES
 	src/VideoSplitter.cpp
 	src/VideoRender.cpp
 	src/VideoEncode.cpp
+	src/VideoDecode.cpp
 )
 
 add_library( "OpenMaxIL++" ${SOURCES} )

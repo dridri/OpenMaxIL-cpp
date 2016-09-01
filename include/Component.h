@@ -29,6 +29,12 @@ public:
 	virtual OMX_ERRORTYPE SetState( const State& st );
 	OMX_ERRORTYPE SetupTunnel( uint8_t port_output, Component* next, uint8_t port_input );
 
+	OMX_ERRORTYPE SendCommand( OMX_COMMANDTYPE Cmd, OMX_U32 nParam1, OMX_PTR pCmdData );
+	OMX_ERRORTYPE GetParameter( OMX_INDEXTYPE nParamIndex, OMX_PTR pComponentParameterStructure );
+	OMX_ERRORTYPE SetParameter( OMX_INDEXTYPE nIndex,OMX_PTR pComponentParameterStructure );
+	OMX_ERRORTYPE GetConfig( OMX_INDEXTYPE nIndex, OMX_PTR pComponentConfigStructure );
+	OMX_ERRORTYPE SetConfig( OMX_INDEXTYPE nIndex, OMX_PTR pComponentConfigStructure );
+
 protected:
 	Component( const std::string& name, const std::vector< uint8_t >& input_ports, const std::vector< uint8_t >& output_ports, bool verbose );
 	virtual ~Component();
@@ -51,16 +57,13 @@ protected:
 		omx_struct.nVersion.s.nRevision = OMX_VERSION_REVISION;
 		omx_struct.nVersion.s.nStep = OMX_VERSION_STEP;
 	}
-	OMX_ERRORTYPE SendCommand( OMX_COMMANDTYPE Cmd, OMX_U32 nParam1, OMX_PTR pCmdData );
-	OMX_ERRORTYPE GetParameter( OMX_INDEXTYPE nParamIndex, OMX_PTR pComponentParameterStructure );
-	OMX_ERRORTYPE SetParameter( OMX_INDEXTYPE nIndex,OMX_PTR pComponentParameterStructure );
-	OMX_ERRORTYPE GetConfig( OMX_INDEXTYPE nIndex, OMX_PTR pComponentConfigStructure );
-	OMX_ERRORTYPE SetConfig( OMX_INDEXTYPE nIndex, OMX_PTR pComponentConfigStructure );
 
 	typedef struct Port {
 		uint8_t nPort;
 		bool bEnabled;
 		bool bTunneled;
+		Component* pTunnel;
+		uint8_t nTunnelPort;
 	} Port;
 
 	std::string mName;

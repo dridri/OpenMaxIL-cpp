@@ -17,3 +17,9 @@ VideoSplitter::VideoSplitter( bool verbose )
 VideoSplitter::~VideoSplitter()
 {
 }
+
+
+OMX_ERRORTYPE VideoSplitter::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata )
+{
+	return Component::EventHandler( event, data1, data2, eventdata );
+}

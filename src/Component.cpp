@@ -9,6 +9,9 @@
 #include <IL/OMX_Broadcom.h>
 #include <iostream>
 
+
+static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def );
+
 using namespace IL;
 
 std::list< OMX_U8* > Component::mAllocatedBuffers;
@@ -75,6 +78,7 @@ OMX_ERRORTYPE Component::SetState( const State& st_ )
 				printf( "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
 				return err;
 			}
+			omx_block_until_port_changed( p.nPort, OMX_TRUE );
 		}
 	}
 	for ( auto x : mOutputPorts ) {
@@ -85,6 +89,7 @@ OMX_ERRORTYPE Component::SetState( const State& st_ )
 				printf( "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
 				return err;
 			}
+			omx_block_until_port_changed( p.nPort, OMX_TRUE );
 		}
 	}
 
@@ -260,9 +265,21 @@ OMX_ERRORTYPE Component::SetupTunnel( uint8_t port_output, Component* next, uint
 		fprintf( stderr, "[%s] SetupTunnel from %d to %s:%d failed : %X\n", mName.c_str(), port_output, next->mName.c_str(), port_input, err );
 	} else {
 		mOutputPorts[ port_output ].bTunneled = true;
+		mOutputPorts[ port_output ].pTunnel = next;
+		mOutputPorts[ port_output ].nTunnelPort = port_input;
 		next->mInputPorts[ port_input ].bTunneled = true;
+		next->mInputPorts[ port_input ].pTunnel = this;
+		next->mInputPorts[ port_input ].nTunnelPort = port_output;
 		if ( mVerbose ) {
 			fprintf( stderr, "[%s] SetupTunnel from %d to %s:%d completed\n", mName.c_str(), port_output, next->mName.c_str(), port_input );
+			OMX_PARAM_PORTDEFINITIONTYPE def;
+			OMX_INIT_STRUCTURE( def );
+			def.nPortIndex = port_output;
+			GetParameter( OMX_IndexParamPortDefinition, &def );
+			print_def( def );
+			def.nPortIndex = port_input;
+			next->GetParameter( OMX_IndexParamPortDefinition, &def );
+			print_def( def );
 		}
 	}
 	return err;
@@ -361,7 +378,7 @@ void Component::omx_block_until_state_changed( OMX_STATETYPE state )
 OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata )
 {
 	if ( mVerbose and event != OMX_EventCmdComplete ) {
-		fprintf( stderr, "Event on %p (%s) type %d\n", mHandle, mName.c_str(), event );
+		fprintf( stderr, "Event on %p (%s) type %d [ %d, %d, %p ]\n", mHandle, mName.c_str(), event, data1, data2, eventdata );
 	}
 	return OMX_ErrorNone;
 }
@@ -369,12 +386,14 @@ OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U
 
 OMX_ERRORTYPE Component::EmptyBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
+	fprintf( stderr, "EmptyBufferDone on %p (%s)\n", mHandle, mName.c_str() );
 	return OMX_ErrorNone;
 }
 
 
 OMX_ERRORTYPE Component::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
+	fprintf( stderr, "FillBufferDone on %p (%s)\n", mHandle, mName.c_str() );
 	return OMX_ErrorNone;
 }
 
@@ -413,4 +432,24 @@ const Component::State Component::state()
 		}
 	}
 	return mState;
+}
+
+
+static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def )
+{
+	printf("Port %u: %s %u/%u %u %u %s,%s,%s %ux%u %ux%u @%ufps %u\n",
+		def.nPortIndex,
+		def.eDir == OMX_DirInput ? "in" : "out",
+		def.nBufferCountActual,
+		def.nBufferCountMin,
+		def.nBufferSize,
+		def.nBufferAlignment,
+		def.bEnabled ? "enabled" : "disabled",
+		def.bPopulated ? "populated" : "not pop.",
+		def.bBuffersContiguous ? "contig." : "not cont.",
+		def.format.video.nFrameWidth,
+		def.format.video.nFrameHeight,
+		def.format.video.nStride,
+		def.format.video.nSliceHeight,
+		def.format.video.xFramerate >> 16, def.format.video.eColorFormat);
 }

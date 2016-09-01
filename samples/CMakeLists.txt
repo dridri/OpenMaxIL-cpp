@@ -17,3 +17,9 @@ target_link_libraries( camera_live "OpenMaxIL++" -lopenmaxil -lbcm_host -lvcos -
 
 add_executable( camera_encode camera_encode.cpp )
 target_link_libraries( camera_encode "OpenMaxIL++" -lopenmaxil -lbcm_host -lvcos -lvchiq_arm -lrt -lpthread -ldl )
+
+add_executable( file_decode file_decode.cpp )
+target_link_libraries( file_decode "OpenMaxIL++" -lopenmaxil -lbcm_host -lvcos -lvchiq_arm -lrt -lpthread -ldl )
+
+add_executable( camera_live_encode_decode camera_live_encode_decode.cpp )
+target_link_libraries( camera_live_encode_decode "OpenMaxIL++" -lopenmaxil -lbcm_host -lvcos -lvchiq_arm -lrt -lpthread -ldl )

@@ -81,8 +81,8 @@ public:
 	OMX_ERRORTYPE setFramerate( uint32_t fps );
 	OMX_ERRORTYPE setBrightness( uint32_t value );
 	OMX_ERRORTYPE setSharpness( uint32_t value );
-	OMX_ERRORTYPE setSaturation( uint32_t value );
-	OMX_ERRORTYPE setContrast( uint32_t value );
+	OMX_ERRORTYPE setSaturation( int32_t value );
+	OMX_ERRORTYPE setContrast( int32_t value );
 	OMX_ERRORTYPE setWhiteBalanceControl( WhiteBalControl value );
 	OMX_ERRORTYPE setExposureControl( ExposureControl value );
 	OMX_ERRORTYPE setExposureValue( uint16_t exposure_compensation, float aperture, uint32_t iso_sensitivity, uint32_t shutter_speed_us );
