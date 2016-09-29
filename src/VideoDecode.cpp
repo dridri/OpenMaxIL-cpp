@@ -34,7 +34,6 @@ VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verb
 	errconceal.bStartWithValidFrame = OMX_FALSE;
 	SetParameter( OMX_IndexParamBrcmVideoDecodeErrorConcealment, &errconceal );
 
-
 	OMX_PARAM_DATAUNITTYPE unit;
 	OMX_INIT_STRUCTURE( unit );
 	unit.nPortIndex = 130;
@@ -70,6 +69,7 @@ OMX_ERRORTYPE VideoDecode::SetState( const Component::State& st )
 {
 	if ( mOutputPorts[130].bTunneled == false and mBuffer == nullptr ) {
 		AllocateBuffers( &mBuffer, 130, true );
+		mBufferPtr = mBuffer->pBuffer;
 		mOutputPorts[130].bEnabled = true;
 	}
 
@@ -99,10 +99,7 @@ OMX_ERRORTYPE VideoDecode::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX
 OMX_ERRORTYPE VideoDecode::EmptyBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
 // 	std::cout << "EmptyBufferDone()\n";
-
-	std::unique_lock<std::mutex> locker( mNeedDataMutex );
 	mNeedData = true;
-	mNeedDataCond.notify_all();
 	return OMX_ErrorNone;
 }
 
@@ -136,30 +133,42 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 		mOutputPorts[131].pTunnel->SetState( StateExecuting );
 		SendCommand( OMX_CommandPortEnable, 131, nullptr );
 	}
-/*
-	mNeedDataMutex.lock();
-	if ( mNeedData ) {
-		mNeedData = false;
-		mNeedDataMutex.unlock();
-	} else {
-		mNeedDataMutex.unlock();
-		std::unique_lock<std::mutex> locker( mNeedDataMutex );
-		std::cout << "fillInput()::cond_wait\n";
-		mNeedDataCond.wait( locker );
-		mNeedData = false;
-	}
-*/
-	while ( mNeedData == false ) {
-		usleep( 1 );
-	}
+
+	// TEST
+// 	while ( mNeedData == false ) {
+// 		usleep( 1 );
+// 	}
 
 	if ( mBuffer ) {
-		SendCommand( OMX_CommandFlush, 130, nullptr );
 		mNeedData = false;
-		memcpy( mBuffer->pBuffer, pBuf, len );
+
+		// Ensure that everything is ok
+		uint32_t sz = len;
+		if ( sz > mBuffer->nAllocLen ) {
+			printf( "LEAK : %d > %d\n", sz, mBuffer->nAllocLen );
+			sz = mBuffer->nAllocLen;
+		}
+		if ( mBufferPtr != mBuffer->pBuffer ) {
+			printf( "LEAK : %p != %p ======================\n", mBufferPtr, mBuffer->pBuffer );
+			mBuffer->pBuffer = mBufferPtr;
+		}
+
+		// Manually copy buffer, since libcofi_rpi's memcpy causes random segfault
+		uint32_t* start = (uint32_t*)mBufferPtr;
+		uint32_t* end = start + ( len >> 2 ) + 1;
+		uint32_t* copy = (uint32_t*)pBuf;
+		while ( start < end ) {
+			*(start++) = *(copy++);
+		}
+
+		// Send buffer to GPU
 		mBuffer->nFilledLen = len;
 		mBuffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME | OMX_BUFFERFLAG_DATACORRUPT | ( mFirstData ? OMX_BUFFERFLAG_STARTTIME : OMX_BUFFERFLAG_TIME_UNKNOWN );
-		((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
+		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
+		if ( err != OMX_ErrorNone ) {
+			printf( "EmptyThisBuffer error : 0x%08X\n", (uint32_t)err );
+		}
+
 		mFirstData = false;
 	}
 }

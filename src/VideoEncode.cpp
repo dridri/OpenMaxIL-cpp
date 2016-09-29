@@ -132,6 +132,7 @@ OMX_ERRORTYPE VideoEncode::SetState( const Component::State& st )
 	if ( mOutputPorts[201].bTunneled == false and mBuffer == nullptr ) {
 		AllocateBuffers( &mBuffer, 201, true );
 		mOutputPorts[201].bEnabled = true;
+		mBufferPtr = mBuffer->pBuffer;
 	}
 
 	if ( mInputPorts[200].bTunneled ) {
@@ -178,12 +179,9 @@ OMX_ERRORTYPE VideoEncode::setIDRPeriod( uint32_t period )
 
 OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
-// 	printf( "FillBufferDone 1 (%p, %d, %d)\n", mBuffer->pBuffer, mBuffer->nOffset, mBuffer->nFilledLen );
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
-// 	std::cout << "FillBufferDone 2\n";
 	mDataAvailable = true;
 	mDataAvailableCond.notify_all();
-// 	std::cout << "FillBufferDone 3\n";
 	return OMX_ErrorNone;
 }
 
@@ -196,46 +194,28 @@ const bool VideoEncode::dataAvailable() const
 
 uint32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 {
-// 	std::cout << "getOutputData 1\n";
 	uint32_t datalen = 0;
 
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 
-// 	mDataAvailableMutex.lock();
-// 	std::cout << "getOutputData 2\n";
-
 	if ( mDataAvailable ) {
-// 		std::cout << "getOutputData 3\n";
 		memcpy( pBuf, mBuffer->pBuffer, mBuffer->nFilledLen );
 		datalen = mBuffer->nFilledLen;
-// 		std::cout << "getOutputData 4\n";
 		mDataAvailable = false;
-// 		mDataAvailableMutex.unlock();
-// 		std::cout << "getOutputData 5\n";
 	} else if ( wait ) {
-// 		std::cout << "getOutputData 6\n";
-// 		mDataAvailableMutex.unlock();
-// 		std::cout << "getOutputData 7\n";
-// 		std::unique_lock<std::mutex> locker( mDataAvailableMutex );
-// 		std::cout << "getOutputData 8\n";
 		mDataAvailableCond.wait( locker );
-// 		std::cout << "getOutputData 9\n";
 		memcpy( pBuf, mBuffer->pBuffer, mBuffer->nFilledLen );
 		datalen = mBuffer->nFilledLen;
 		mDataAvailable = false;
-// 		std::cout << "getOutputData 10\n";
 	} else {
-// 		std::cout << "getOutputData 11\n";
 		return OMX_ErrorOverflow;
 	}
-// 	std::cout << "getOutputData 12\n";
 
 	locker.unlock();
+
 	if ( mBuffer ) {
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, mBuffer );
-// 		printf( "FillThisBuffer error : %08X\n", err );
 	}
-// 	std::cout << "getOutputData 13\n";
 
 	return datalen;
 }

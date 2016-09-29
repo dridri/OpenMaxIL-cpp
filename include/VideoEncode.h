@@ -43,6 +43,7 @@ protected:
 
 	CodingType mCodingType;
 	OMX_BUFFERHEADERTYPE* mBuffer;
+	OMX_U8* mBufferPtr;
 	bool mDataAvailable;
 	std::mutex mDataAvailableMutex;
 	std::condition_variable mDataAvailableCond;
