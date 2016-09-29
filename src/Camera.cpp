@@ -17,6 +17,14 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 	if ( high_speed ) {
 		HighSpeedMode();
 	}
+
+	while ( not mReady ) {
+		usleep( 100 * 1000 );
+	}
+	if ( mVerbose ) {
+		fprintf( stderr, "Camera %d ready\n", mDeviceNumber );
+	}
+
 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
@@ -73,8 +81,10 @@ int Camera::Initialize( uint32_t width, uint32_t height )
 	GetParameter( OMX_IndexParamPortDefinition, &def );
 	def.format.video.nFrameWidth  = width;
 	def.format.video.nFrameHeight = height;
-// 	def.format.video.xFramerate   = 0;
-	def.format.video.xFramerate   = 30 << 16; // default to 30 FPS
+	def.format.video.xFramerate   = 30 << 16;
+	if ( width < 1920 and height < 1080 ) {
+		def.format.video.xFramerate   = 60 << 16; // default to 60 FPS
+	}
 	def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
 	def.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
 	SetParameter( OMX_IndexParamPortDefinition, &def );
@@ -93,19 +103,21 @@ int Camera::Initialize( uint32_t width, uint32_t height )
 	setExposureValue( 0, 2.8f, 0, 0 );
 	setFrameStabilisation( true );
 
-	while ( not mReady ) {
-		usleep( 100 * 1000 );
-	}
-	if ( mVerbose ) {
-		fprintf( stderr, "Camera %d ready\n", mDeviceNumber );
-	}
-
 	return 0;
 }
 
 
 int Camera::HighSpeedMode()
 {
+	OMX_PRIORITYMGMTTYPE prio;
+	OMX_INIT_STRUCTURE( prio );
+	GetParameter( OMX_IndexParamPriorityMgmt, &prio );
+	printf( "PRIORITY : %d, %d\n", prio.nGroupPriority, prio.nGroupID );
+	prio.nGroupPriority = 99;
+	SetParameter( OMX_IndexParamPriorityMgmt, &prio );
+	GetParameter( OMX_IndexParamPriorityMgmt, &prio );
+	printf( "PRIORITY : %d, %d\n", prio.nGroupPriority, prio.nGroupID );
+
 	setFrameStabilisation( false );
 
 	/*
@@ -134,37 +146,42 @@ int Camera::HighSpeedMode()
 
 	OMX_CONFIG_ZEROSHUTTERLAGTYPE zero_shutter;
 	OMX_INIT_STRUCTURE( zero_shutter );
-	zero_shutter.bZeroShutterMode = OMX_TRUE;
-// 	zero_shutter.bZeroShutterMode = OMX_FALSE; // TBD ??
-	zero_shutter.bConcurrentCapture = OMX_TRUE;
+	zero_shutter.bZeroShutterMode = 0;
+	zero_shutter.bConcurrentCapture = 1;
 	SetParameter( OMX_IndexParamCameraZeroShutterLag, &zero_shutter );
 
+	OMX_CONFIG_CAPTUREMODETYPE capture_mode;
+	OMX_INIT_STRUCTURE( capture_mode );
+	capture_mode.nPortIndex = 71;
+	capture_mode.bContinuous = OMX_TRUE;
+	SetConfig( OMX_IndexConfigCaptureMode, &capture_mode );
+/*
 	OMX_PARAM_CAMERAIMAGEPOOLTYPE pool;
 	OMX_INIT_STRUCTURE( pool );
 	GetParameter( OMX_IndexParamCameraImagePool, &pool );
 // 	pool.nNumHiResVideoFrames = 1;
 // 	pool.nHiResVideoWidth = WIDTH;
 // 	pool.nHiResVideoHeight = HEIGHT;
-// 	pool.eHiResVideoType = OMX_COLOR_FormatYUV420PackedPlanar;
+	pool.eHiResVideoType = OMX_COLOR_FormatYUV420PackedPlanar;
 // 	pool.nNumHiResStillsFrames = 1; <<==2
 // 	pool.nHiResStillsWidth = WIDTH;
 // 	pool.nHiResStillsHeight = HEIGHT;
-// 	pool.eHiResStillsType = OMX_COLOR_FormatYUV420PackedPlanar;
+	pool.eHiResStillsType = OMX_COLOR_FormatYUV420PackedPlanar;
 // 	pool.nNumLoResFrames = 1;
 // 	pool.nLoResWidth = WIDTH;
 // 	pool.nLoResHeight = HEIGHT;
-// 	pool.eLoResType = OMX_COLOR_FormatYUV420PackedPlanar;
+	pool.eLoResType = OMX_COLOR_FormatYUV420PackedPlanar;
 // 	pool.nNumSnapshotFrames = 1;
-// 	pool.eSnapshotType = OMX_COLOR_FormatYUV420PackedPlanar;
+	pool.eSnapshotType = OMX_COLOR_FormatYUV420PackedPlanar;
 	pool.eInputPoolMode = OMX_CAMERAIMAGEPOOLINPUTMODE_TWOPOOLS;
 // 	pool.nNumInputVideoFrames = 1;
 // 	pool.nInputVideoWidth = WIDTH;
 // 	pool.nInputVideoHeight = HEIGHT;
-// 	pool.eInputVideoType = OMX_COLOR_FormatYUV420PackedPlanar;
+	pool.eInputVideoType = OMX_COLOR_FormatYUV420PackedPlanar;
 // 	pool.nNumInputStillsFrames = 1; //// <== 0
 // 	pool.nInputStillsWidth = WIDTH;
 // 	pool.nInputStillsHeight = HEIGHT;
-// 	pool.eInputStillsType = OMX_COLOR_FormatYUV420PackedPlanar;
+	pool.eInputStillsType = OMX_COLOR_FormatYUV420PackedPlanar;
 	SetParameter( OMX_IndexParamCameraImagePool, &pool );
 
 	OMX_PARAM_CAMERACAPTUREMODETYPE captureMode;
@@ -172,7 +189,7 @@ int Camera::HighSpeedMode()
 	captureMode.nPortIndex = OMX_ALL;
 	captureMode.eMode = OMX_CameraCaptureModeResumeViewfinderImmediately;
 	SetParameter( OMX_IndexParamCameraCaptureMode, &captureMode );
-
+*/
 	OMX_PARAM_CAMERADISABLEALGORITHMTYPE disableAlgorithm;
 	OMX_INIT_STRUCTURE( disableAlgorithm );
 	disableAlgorithm.bDisabled = OMX_TRUE;
@@ -202,8 +219,63 @@ int Camera::HighSpeedMode()
 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmHighDynamicRange;
 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+/*
+	// ALL UNSUPPORTED
+	OMX_CONFIG_BOOLEANTYPE colour_denoise;
+	OMX_INIT_STRUCTURE( colour_denoise );
+	colour_denoise.bEnabled = OMX_FALSE;
+	SetConfig( OMX_IndexConfigStillColourDenoiseEnable, &colour_denoise );
+	SetConfig( OMX_IndexConfigVideoColourDenoiseEnable, &colour_denoise );
+
+	OMX_CONFIG_BOOLEANTYPE async;
+	OMX_INIT_STRUCTURE( async );
+	async.bEnabled = OMX_TRUE;
+	SetParameter( OMX_IndexParamAsynchronousOutput, &async );
+
+	OMX_CONFIG_BOOLEANTYPE pre_post_process;
+	OMX_INIT_STRUCTURE( pre_post_process );
+	pre_post_process.bEnabled = OMX_FALSE;
+	SetConfig( OMX_IndexConfigBrcmCameraRnDPreprocess, &pre_post_process );
+	SetConfig( OMX_IndexConfigBrcmCameraRnDPostprocess, &pre_post_process );
+*/
+	OMX_CONFIG_BOOLEANTYPE sharpen_disable;
+	OMX_INIT_STRUCTURE( sharpen_disable );
+	sharpen_disable.bEnabled = OMX_TRUE;
+	SetParameter( OMX_IndexParamSWSharpenDisable, &sharpen_disable );
+	SetParameter( OMX_IndexParamSWSaturationDisable, &sharpen_disable );
+
 
 	return 0;
+}
+
+
+const uint32_t Camera::brightness()
+{
+	OMX_CONFIG_BRIGHTNESSTYPE brightness;
+	OMX_INIT_STRUCTURE( brightness );
+	brightness.nPortIndex = OMX_ALL;
+	GetConfig( OMX_IndexConfigCommonBrightness, &brightness );
+	return brightness.nBrightness;
+}
+
+
+const int32_t Camera::contrast()
+{
+	OMX_CONFIG_CONTRASTTYPE contrast;
+	OMX_INIT_STRUCTURE( contrast );
+	contrast.nPortIndex = OMX_ALL;
+	GetConfig( OMX_IndexConfigCommonContrast, &contrast );
+	return contrast.nContrast;
+}
+
+
+const int32_t Camera::saturation()
+{
+	OMX_CONFIG_SATURATIONTYPE saturation;
+	OMX_INIT_STRUCTURE( saturation );
+	saturation.nPortIndex = OMX_ALL;
+	GetConfig( OMX_IndexConfigCommonSaturation, &saturation );
+	return saturation.nSaturation;
 }
 
 
@@ -288,7 +360,7 @@ OMX_ERRORTYPE Camera::setExposureValue( uint16_t exposure_compensation, float ap
 	OMX_INIT_STRUCTURE( exposure_value );
 	exposure_value.nPortIndex = OMX_ALL;
 	exposure_value.xEVCompensation = exposure_compensation << 16;
-	exposure_value.nApertureFNumber = ( (uint32_t)( aperture * 1000.0f ) << 16 ) / 1000;
+	exposure_value.nApertureFNumber = (uint32_t)( aperture * 655536.0f );
 	exposure_value.bAutoSensitivity = (OMX_BOOL)( iso_sensitivity == 0 );
 	exposure_value.nSensitivity = iso_sensitivity;
 	exposure_value.bAutoShutterSpeed = (OMX_BOOL)( shutter_speed_us == 0 );

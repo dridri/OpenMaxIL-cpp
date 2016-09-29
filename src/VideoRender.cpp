@@ -6,14 +6,20 @@
 
 using namespace IL;
 
-VideoRender::VideoRender( bool verbose )
+VideoRender::VideoRender( uint32_t offset_x, uint32_t offset_y, uint32_t width, uint32_t height, bool verbose )
 	: Component( "OMX.broadcom.video_render", { 90 }, std::vector< uint8_t >(), verbose )
 {
 	OMX_CONFIG_DISPLAYREGIONTYPE region;
 	OMX_INIT_STRUCTURE( region );
 	region.nPortIndex = 90;
-	region.set = (OMX_DISPLAYSETTYPE)( OMX_DISPLAY_SET_FULLSCREEN | OMX_DISPLAY_SET_NOASPECT | OMX_DISPLAY_SET_LAYER );
-	region.fullscreen = OMX_TRUE;
+	region.set = (OMX_DISPLAYSETTYPE)( OMX_DISPLAY_SET_FULLSCREEN | OMX_DISPLAY_SET_NOASPECT | OMX_DISPLAY_SET_LAYER | ( width != 0 and height != 0 ? OMX_DISPLAY_SET_DEST_RECT : 0 ) );
+	region.fullscreen = (OMX_BOOL)( width == 0 and height == 0 );
+	if ( width != 0 and height != 0 ) {
+		region.dest_rect.x_offset = offset_x;
+		region.dest_rect.y_offset = offset_y;
+		region.dest_rect.width = width;
+		region.dest_rect.height = height;
+	}
 	region.noaspect = OMX_TRUE;
 	region.layer = 0;
 	SetConfig( OMX_IndexConfigDisplayRegion, &region );
@@ -24,4 +30,23 @@ VideoRender::VideoRender( bool verbose )
 
 VideoRender::~VideoRender()
 {
+}
+
+
+OMX_ERRORTYPE VideoRender::setMirror( bool hrzn, bool vert )
+{
+	OMX_MIRRORTYPE eMirror = OMX_MirrorNone;
+	if ( hrzn and not vert ) {
+		eMirror = OMX_MirrorHorizontal;
+	} else if ( vert and not hrzn ) {
+		eMirror = OMX_MirrorVertical;
+	} else if ( hrzn and vert ) {
+		eMirror = OMX_MirrorBoth;
+	}
+
+	OMX_CONFIG_MIRRORTYPE mirror;
+	OMX_INIT_STRUCTURE(mirror);
+	mirror.nPortIndex = 90;
+	mirror.eMirror = eMirror;
+	return SetConfig( OMX_IndexConfigCommonMirror, &mirror );
 }

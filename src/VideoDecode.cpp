@@ -1,4 +1,5 @@
 #include "VideoDecode.h"
+#include <unistd.h>
 #include <IL/OMX_Types.h>
 #include <IL/OMX_Component.h>
 #include <IL/OMX_Broadcom.h>
@@ -23,6 +24,39 @@ VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verb
 	pfmt.xFramerate = fps << 16;
 	SetParameter( OMX_IndexParamVideoPortFormat, &pfmt );
 
+	OMX_CONFIG_BOOLEANTYPE interpolate_timestamp;
+	OMX_INIT_STRUCTURE( interpolate_timestamp );
+	interpolate_timestamp.bEnabled = OMX_FALSE;
+	SetParameter( OMX_IndexParamBrcmInterpolateMissingTimestamps, &interpolate_timestamp );
+
+	OMX_PARAM_BRCMVIDEODECODEERRORCONCEALMENTTYPE errconceal;
+	OMX_INIT_STRUCTURE( errconceal );
+	errconceal.bStartWithValidFrame = OMX_FALSE;
+	SetParameter( OMX_IndexParamBrcmVideoDecodeErrorConcealment, &errconceal );
+
+
+	OMX_PARAM_DATAUNITTYPE unit;
+	OMX_INIT_STRUCTURE( unit );
+	unit.nPortIndex = 130;
+	unit.eUnitType = OMX_DataUnitCodedPicture;
+	unit.eEncapsulationType = OMX_DataEncapsulationElementaryStream;
+	SetParameter( OMX_IndexParamBrcmDataUnit, &unit );
+
+	if ( coding_type == CodingAVC ) {
+		OMX_PARAM_U32TYPE extrabuffers;
+		OMX_INIT_STRUCTURE( extrabuffers );
+		extrabuffers.nPortIndex = 131;
+		extrabuffers.nU32 = 1;
+		SetParameter( OMX_IndexParamBrcmExtraBuffers, &extrabuffers );
+/*
+		OMX_PARAM_IMAGEPOOLSIZETYPE imagepool;
+		imagepool.width = 1280;
+		imagepool.height = 720;
+		imagepool.num_pages = 2;
+		SetParameter( OMX_IndexParamImagePoolSize, &imagepool );
+*/
+	}
+
 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
@@ -39,14 +73,15 @@ OMX_ERRORTYPE VideoDecode::SetState( const Component::State& st )
 		mOutputPorts[130].bEnabled = true;
 	}
 
+	if ( mBuffer ) {
+		mNeedData = true;
+	}
+
 	OMX_ERRORTYPE ret = IL::Component::SetState(st);
 	if ( ret != OMX_ErrorNone ) {
 		return ret;
 	}
 
-	if ( mBuffer ) {
-		mNeedData = true;
-	}
 	return ret;
 }
 
@@ -63,7 +98,8 @@ OMX_ERRORTYPE VideoDecode::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX
 
 OMX_ERRORTYPE VideoDecode::EmptyBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
-// 	std::cout << "EmptyBufferDone\n";
+// 	std::cout << "EmptyBufferDone()\n";
+
 	std::unique_lock<std::mutex> locker( mNeedDataMutex );
 	mNeedData = true;
 	mNeedDataCond.notify_all();
@@ -100,7 +136,7 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 		mOutputPorts[131].pTunnel->SetState( StateExecuting );
 		SendCommand( OMX_CommandPortEnable, 131, nullptr );
 	}
-
+/*
 	mNeedDataMutex.lock();
 	if ( mNeedData ) {
 		mNeedData = false;
@@ -108,14 +144,21 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 	} else {
 		mNeedDataMutex.unlock();
 		std::unique_lock<std::mutex> locker( mNeedDataMutex );
+		std::cout << "fillInput()::cond_wait\n";
 		mNeedDataCond.wait( locker );
 		mNeedData = false;
 	}
+*/
+	while ( mNeedData == false ) {
+		usleep( 1 );
+	}
 
 	if ( mBuffer ) {
+		SendCommand( OMX_CommandFlush, 130, nullptr );
+		mNeedData = false;
 		memcpy( mBuffer->pBuffer, pBuf, len );
 		mBuffer->nFilledLen = len;
-		mBuffer->nFlags = ( mFirstData ? OMX_BUFFERFLAG_STARTTIME : OMX_BUFFERFLAG_TIME_UNKNOWN );
+		mBuffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME | OMX_BUFFERFLAG_DATACORRUPT | ( mFirstData ? OMX_BUFFERFLAG_STARTTIME : OMX_BUFFERFLAG_TIME_UNKNOWN );
 		((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
 		mFirstData = false;
 	}

@@ -14,7 +14,9 @@ static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def );
 
 using namespace IL;
 
+bool Component::mCoreReady = false;
 std::list< OMX_U8* > Component::mAllocatedBuffers;
+std::list< Component* > Component::mComponents;
 
 OMX_ERRORTYPE Component::genericeventhandler( OMX_HANDLETYPE handle, Component* component, OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata )
 {
@@ -40,6 +42,14 @@ Component::Component( const std::string& name, const std::vector< uint8_t >& inp
 	, mState( StateInvalid )
 	, mHandle( nullptr )
 {
+	if ( not mCoreReady ) {
+		mCoreReady = true;
+		atexit( &Component::onexit );
+		// TODO : OMX_Init()
+	}
+
+	mComponents.emplace_back( this );
+
 	for ( auto n : input_ports ) {
 		Port p;
 		p.nPort = n;
@@ -70,26 +80,28 @@ OMX_ERRORTYPE Component::SetState( const State& st_ )
 		return OMX_ErrorInvalidComponent;
 	}
 
-	for ( auto x : mInputPorts ) {
-		Port p = x.second;
-		if ( p.bTunneled and not p.bEnabled ) {
-			OMX_ERRORTYPE err = SendCommand( OMX_CommandPortEnable, p.nPort, nullptr );
-			if ( err != OMX_ErrorNone ) {
-				printf( "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
-				return err;
+	if ( st_ == StateExecuting ) {
+		for ( auto x : mInputPorts ) {
+			Port p = x.second;
+			if ( p.bTunneled and not p.bEnabled ) {
+				OMX_ERRORTYPE err = SendCommand( OMX_CommandPortEnable, p.nPort, nullptr );
+				if ( err != OMX_ErrorNone ) {
+					printf( "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
+					return err;
+				}
+				omx_block_until_port_changed( p.nPort, OMX_TRUE );
 			}
-			omx_block_until_port_changed( p.nPort, OMX_TRUE );
 		}
-	}
-	for ( auto x : mOutputPorts ) {
-		Port p = x.second;
-		if ( p.bTunneled and not p.bEnabled ) {
-			OMX_ERRORTYPE err = SendCommand( OMX_CommandPortEnable, p.nPort, nullptr );
-			if ( err != OMX_ErrorNone ) {
-				printf( "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
-				return err;
+		for ( auto x : mOutputPorts ) {
+			Port p = x.second;
+			if ( p.bTunneled and not p.bEnabled ) {
+				OMX_ERRORTYPE err = SendCommand( OMX_CommandPortEnable, p.nPort, nullptr );
+				if ( err != OMX_ErrorNone ) {
+					printf( "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
+					return err;
+				}
+				omx_block_until_port_changed( p.nPort, OMX_TRUE );
 			}
-			omx_block_until_port_changed( p.nPort, OMX_TRUE );
 		}
 	}
 
@@ -154,9 +166,21 @@ int Component::InitComponent()
 	}
 
 	for ( auto port : mInputPorts ) {
+		OMX_CONFIG_PORTBOOLEANTYPE zerocopy;
+		OMX_INIT_STRUCTURE( zerocopy );
+		zerocopy.nPortIndex = port.first;
+		zerocopy.bEnabled = OMX_TRUE;
+		SetParameter( OMX_IndexParamBrcmZeroCopy, &zerocopy );
+
 		SendCommand( OMX_CommandPortDisable, port.first, nullptr );
 	}
 	for ( auto port : mOutputPorts ) {
+		OMX_CONFIG_PORTBOOLEANTYPE zerocopy;
+		OMX_INIT_STRUCTURE( zerocopy );
+		zerocopy.nPortIndex = port.first;
+		zerocopy.bEnabled = OMX_TRUE;
+		SetParameter( OMX_IndexParamBrcmZeroCopy, &zerocopy );
+
 		SendCommand( OMX_CommandPortDisable, port.first, nullptr );
 	}
 
@@ -338,6 +362,27 @@ OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int por
 }
 
 
+void Component::onexit()
+{
+	printf( "Component::onexit()\n" );
+
+	for( auto buf : mAllocatedBuffers ) {
+		vcos_free( buf );
+		printf( "Freed buffer %p\n", buf );
+	}
+
+	for( auto comp : mComponents ) {
+		OMX_ERRORTYPE err = comp->SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
+		if ( err != OMX_ErrorNone ) {
+			printf( "[%s]SendCommand( OMX_CommandStateSet, %d ) failed\n", comp->mName.c_str(), OMX_StateIdle );
+			return;
+		}
+		usleep( 1000 * 100 );
+		printf( "FreeHandle( %p ) : %08X\n", comp->mHandle, OMX_FreeHandle( comp->mHandle ) );
+	}
+}
+
+
 void Component::omx_block_until_port_changed( OMX_U32 nPortIndex, OMX_BOOL bEnabled )
 {
 	printf( "Wating port %d to be %d\n", nPortIndex, bEnabled );
@@ -378,7 +423,11 @@ void Component::omx_block_until_state_changed( OMX_STATETYPE state )
 OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata )
 {
 	if ( mVerbose and event != OMX_EventCmdComplete ) {
-		fprintf( stderr, "Event on %p (%s) type %d [ %d, %d, %p ]\n", mHandle, mName.c_str(), event, data1, data2, eventdata );
+		if ( event == OMX_EventError ) {
+			fprintf( stderr, "[%s]OMX Error %X\n", mName.c_str(), data1 );
+		} else {
+			fprintf( stderr, "Event on %p (%s) type %X [ %X, %d, %p ]\n", mHandle, mName.c_str(), event, data1, data2, eventdata );
+		}
 	}
 	return OMX_ErrorNone;
 }

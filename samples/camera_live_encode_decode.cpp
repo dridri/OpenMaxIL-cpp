@@ -13,7 +13,7 @@ int main( int ac, char** av )
 	OMX_Init();
 
 	Camera* camera = new Camera( 1280, 720, 0, true, true );
-	VideoEncode* encode = new VideoEncode( 768, VideoEncode::CodingAVC, true );
+	VideoEncode* encode = new VideoEncode( 2048, VideoEncode::CodingAVC, true );
 	camera->SetupTunnel( 71, encode, 200 );
 	camera->SetState( Component::StateExecuting );
 	encode->SetState( Component::StateExecuting );
@@ -31,8 +31,7 @@ int main( int ac, char** av )
 		if ( datalen > 0 ) {
 			decode->fillInput( data, datalen );
 		}
-
-		usleep( 1 );
+		usleep( 0 );
 	}
 
 	return 0;

@@ -1,16 +1,18 @@
 cmake_minimum_required(VERSION 2.6)
 
-SET( CMAKE_SYSTEM_NAME Linux )
-SET( CMAKE_SYSTEM_VERSION 1 )
+if ( ${BUILD_ARCH} MATCHES "x86*" AND NOT ${CMAKE_C_COMPILER} MATCHES "arm*" )
+	SET( CMAKE_SYSTEM_NAME Linux )
+	SET( CMAKE_SYSTEM_VERSION 1 )
 
-SET( CROSS arm-linux-gnueabihf- )
-SET( CMAKE_C_COMPILER arm-linux-gnueabihf-gcc )
-SET( CMAKE_CXX_COMPILER arm-linux-gnueabihf-g++ )
-SET( CMAKE_ASM_COMPILER arm-linux-gnueabihf-as )
+	SET( CROSS arm-linux-gnueabihf- )
+	SET( CMAKE_C_COMPILER arm-linux-gnueabihf-gcc )
+	SET( CMAKE_CXX_COMPILER arm-linux-gnueabihf-g++ )
+	SET( CMAKE_ASM_COMPILER arm-linux-gnueabihf-as )
 
-SET( CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER )
-SET( CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY )
-SET( CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY )
+	SET( CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER )
+	SET( CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY )
+	SET( CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY )
+endif()
 
 project( "OpenMaxIL++" )
 
