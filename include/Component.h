@@ -72,6 +72,7 @@ protected:
 	OMX_HANDLETYPE mHandle;
 	std::map< uint8_t, Port > mInputPorts;
 	std::map< uint8_t, Port > mOutputPorts;
+	static uint64_t ticks64();
 
 private:
 	static OMX_ERRORTYPE genericeventhandler( OMX_HANDLETYPE handle, Component* component, OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );

@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <sys/time.h>
 #include <bcm_host.h>
 #include <IL/OMX_Video.h>
 #include <IL/OMX_Types.h>
@@ -501,4 +503,12 @@ static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def )
 		def.format.video.nStride,
 		def.format.video.nSliceHeight,
 		def.format.video.xFramerate >> 16, def.format.video.eColorFormat);
+}
+
+
+uint64_t Component::ticks64()
+{
+	struct timespec now;
+	clock_gettime( CLOCK_MONOTONIC, &now );
+	return (uint64_t)now.tv_sec * 1000000ULL + (uint64_t)now.tv_nsec / 1000ULL;
 }

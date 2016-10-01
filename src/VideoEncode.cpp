@@ -215,6 +215,9 @@ uint32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 
 	if ( mBuffer ) {
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, mBuffer );
+		if ( err != OMX_ErrorNone ) {
+			return err;
+		}
 	}
 
 	return datalen;

@@ -78,9 +78,6 @@ OMX_ERRORTYPE VideoDecode::SetState( const Component::State& st )
 	}
 
 	OMX_ERRORTYPE ret = IL::Component::SetState(st);
-	if ( ret != OMX_ErrorNone ) {
-		return ret;
-	}
 
 	return ret;
 }
@@ -134,12 +131,24 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 		SendCommand( OMX_CommandPortEnable, 131, nullptr );
 	}
 
-	// TEST
-// 	while ( mNeedData == false ) {
-// 		usleep( 1 );
-// 	}
-
 	if ( mBuffer ) {
+		uint64_t wait_start = ticks64();
+		bool broken = false;
+		while ( mNeedData == false ) {
+			if ( ticks64() - wait_start >= 50 * 1000 ) {
+				// EmptyBufferDone() has not been called in the last 50ms, decoder has probably stalled
+				broken = true;
+				break;
+			}
+			usleep( 20 );
+		}
+		if ( broken ) {
+			// If the decoder stalled, flush both input and output ports
+			SendCommand( OMX_CommandFlush, 130, nullptr );
+			SendCommand( OMX_CommandFlush, 131, nullptr );
+			mFirstData = true;
+		}
+
 		mNeedData = false;
 
 		// Ensure that everything is ok
@@ -153,7 +162,7 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 			mBuffer->pBuffer = mBufferPtr;
 		}
 
-		// Manually copy buffer, since libcofi_rpi's memcpy causes random segfault
+		// Manually copy buffer, since libcofi_rpi's memcpy causes random segfault (missalign?)
 		uint32_t* start = (uint32_t*)mBufferPtr;
 		uint32_t* end = start + ( len >> 2 ) + 1;
 		uint32_t* copy = (uint32_t*)pBuf;
@@ -162,6 +171,7 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 		}
 
 		// Send buffer to GPU
+		mBuffer->nTimeStamp = { 0, 0 };
 		mBuffer->nFilledLen = len;
 		mBuffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME | OMX_BUFFERFLAG_DATACORRUPT | ( mFirstData ? OMX_BUFFERFLAG_STARTTIME : OMX_BUFFERFLAG_TIME_UNKNOWN );
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
