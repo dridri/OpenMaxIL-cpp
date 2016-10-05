@@ -177,6 +177,9 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
 		if ( err != OMX_ErrorNone ) {
 			printf( "EmptyThisBuffer error : 0x%08X\n", (uint32_t)err );
+			SendCommand( OMX_CommandFlush, 130, nullptr );
+			SendCommand( OMX_CommandFlush, 131, nullptr );
+			mFirstData = true;
 		}
 
 		mFirstData = false;
