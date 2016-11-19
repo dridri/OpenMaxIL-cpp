@@ -132,11 +132,14 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 	}
 
 	if ( mBuffer ) {
+/*
 		uint64_t wait_start = ticks64();
 		bool broken = false;
-		while ( mNeedData == false ) {
+		uint64_t broken_time = 0;
+		while ( mFirstData == false and mNeedData == false ) {
 			if ( ticks64() - wait_start >= 50 * 1000 ) {
 				// EmptyBufferDone() has not been called in the last 50ms, decoder has probably stalled
+				broken_time = ticks64() - wait_start;
 				broken = true;
 				break;
 			}
@@ -144,13 +147,13 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 		}
 		if ( broken ) {
 			// If the decoder stalled, flush both input and output ports
+			printf( "Decoder broken (took %llu ms), flushing..\n", broken_time / 1000 );
 			SendCommand( OMX_CommandFlush, 130, nullptr );
 			SendCommand( OMX_CommandFlush, 131, nullptr );
 			mFirstData = true;
 		}
-
 		mNeedData = false;
-
+*/
 		// Ensure that everything is ok
 		uint32_t sz = len;
 		if ( sz > mBuffer->nAllocLen ) {
@@ -174,7 +177,9 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 		mBuffer->nTimeStamp = { 0, 0 };
 		mBuffer->nFilledLen = len;
 		mBuffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME | OMX_BUFFERFLAG_DATACORRUPT | ( mFirstData ? OMX_BUFFERFLAG_STARTTIME : OMX_BUFFERFLAG_TIME_UNKNOWN );
+		printf( "Filling buffer\n" );
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
+		printf( "Filling buffer OK\n" );
 		if ( err != OMX_ErrorNone ) {
 			printf( "EmptyThisBuffer error : 0x%08X\n", (uint32_t)err );
 			SendCommand( OMX_CommandFlush, 130, nullptr );

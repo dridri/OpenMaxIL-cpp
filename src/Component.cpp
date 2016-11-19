@@ -428,7 +428,7 @@ OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U
 		if ( event == OMX_EventError ) {
 			fprintf( stderr, "[%s]OMX Error %X\n", mName.c_str(), data1 );
 		} else {
-			fprintf( stderr, "Event on %p (%s) type %X [ %X, %d, %p ]\n", mHandle, mName.c_str(), event, data1, data2, eventdata );
+			fprintf( stderr, "Event on %p (%s) type %X [ %d, %d, %p ]\n", mHandle, mName.c_str(), event, data1, data2, eventdata );
 		}
 	}
 	return OMX_ErrorNone;
