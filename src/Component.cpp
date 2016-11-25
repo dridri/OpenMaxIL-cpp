@@ -17,7 +17,7 @@ static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def );
 using namespace IL;
 
 bool Component::mCoreReady = false;
-std::list< OMX_U8* > Component::mAllocatedBuffers;
+std::list< OMX_U8* > Component::mAllAllocatedBuffers;
 std::list< Component* > Component::mComponents;
 
 OMX_ERRORTYPE Component::genericeventhandler( OMX_HANDLETYPE handle, Component* component, OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata )
@@ -38,7 +38,7 @@ OMX_ERRORTYPE Component::filled( OMX_HANDLETYPE handle, Component* component, OM
 }
 
 
-Component::Component( const std::string& name, const std::vector< uint8_t >& input_ports, const std::vector< uint8_t >& output_ports, bool verbose )
+Component::Component( const std::string& name, const std::vector< PortInit >& input_ports, const std::vector< PortInit >& output_ports, bool verbose )
 	: mName( name )
 	, mVerbose( verbose )
 	, mState( StateInvalid )
@@ -52,19 +52,21 @@ Component::Component( const std::string& name, const std::vector< uint8_t >& inp
 
 	mComponents.emplace_back( this );
 
-	for ( auto n : input_ports ) {
+	for ( PortInit n : input_ports ) {
 		Port p;
-		p.nPort = n;
+		p.nPort = n.id;
+		p.type = n.type;
 		p.bEnabled = false;
 		p.bTunneled = false;
-		mInputPorts.insert( std::make_pair( n, p ) );
+		mInputPorts.insert( std::make_pair( n.id, p ) );
 	}
-	for ( auto n : output_ports ) {
+	for ( PortInit n : output_ports ) {
 		Port p;
-		p.nPort = n;
+		p.nPort = n.id;
+		p.type = n.type;
 		p.bEnabled = false;
 		p.bTunneled = false;
-		mOutputPorts.insert( std::make_pair( n, p ) );
+		mOutputPorts.insert( std::make_pair( n.id, p ) );
 	}
 
 	InitComponent();
@@ -285,6 +287,19 @@ OMX_ERRORTYPE Component::SetupTunnel( uint8_t port_output, Component* next, uint
 		return OMX_ErrorInvalidComponent;
 	}
 
+	if ( port_input == 0 ) {
+		for ( auto p : next->mInputPorts ) {
+			Port port = p.second;
+			if ( ( (uint32_t)port.type & (uint32_t)mOutputPorts[port_output].type ) != 0 ) {
+				port_input = port.nPort;
+				break;
+			}
+		}
+		if ( mVerbose ) {
+			printf( "%p[%s] SetupTunnel detected input port : %d\n", mHandle, mName.c_str(), port_input );
+		}
+	}
+
 	OMX_ERRORTYPE err = OMX_SetupTunnel( mHandle, port_output, next->mHandle, port_input );
 
 	if ( err != OMX_ErrorNone ) {
@@ -346,6 +361,7 @@ OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int por
 		buf = (OMX_U8*)vcos_malloc_aligned( portdef.nBufferSize, portdef.nBufferAlignment, "buffer" );
 		if ( buf ) {
 			mAllocatedBuffers.emplace_back( buf );
+			mAllAllocatedBuffers.emplace_back( buf );
 		} else {
 			return OMX_ErrorInsufficientResources;
 		}
@@ -368,7 +384,7 @@ void Component::onexit()
 {
 	printf( "Component::onexit()\n" );
 
-	for( auto buf : mAllocatedBuffers ) {
+	for( auto buf : mAllAllocatedBuffers ) {
 		vcos_free( buf );
 		printf( "Freed buffer %p\n", buf );
 	}

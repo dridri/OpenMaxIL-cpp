@@ -7,7 +7,7 @@
 using namespace IL;
 
 Resize::Resize( uint32_t width, uint32_t height, bool verbose )
-	: Component( "OMX.broadcom.resize", { 60 }, { 61 }, verbose )
+	: Component( "OMX.broadcom.resize", { PortInit( 60, (PortType)(Image | Video) ) }, { PortInit( 61, (PortType)(Image | Video) ) }, verbose )
 	, mWidth( width )
 	, mHeight( height )
 {
@@ -43,6 +43,12 @@ Resize::Resize( uint32_t width, uint32_t height, bool verbose )
 
 Resize::~Resize()
 {
+}
+
+
+OMX_ERRORTYPE Resize::SetupTunnel( Component* next, uint8_t port_input )
+{
+	return Component::SetupTunnel( 61, next, port_input );
 }
 
 

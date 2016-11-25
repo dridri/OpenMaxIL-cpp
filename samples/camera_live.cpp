@@ -11,7 +11,7 @@ int main( int ac, char** av )
 
 	Camera* camera = new Camera( 1920, 1080, 0, true, true );
 	VideoRender* render = new VideoRender( true );
-	camera->SetupTunnel( 71, render, 90 );
+	camera->SetupTunnelVideo( render );
 
 	camera->SetState( Component::StateExecuting );
 	render->SetState( Component::StateExecuting );

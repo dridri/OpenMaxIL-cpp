@@ -31,7 +31,9 @@ public:
 
 	VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type = CodingAVC, bool verbose = false );
 	~VideoEncode();
+
 	virtual OMX_ERRORTYPE SetState( const State& st );
+	OMX_ERRORTYPE SetupTunnel( Component* next, uint8_t port_input = 0 );
 
 	const bool dataAvailable() const;
 	uint32_t getOutputData( uint8_t* pBuf, bool wait = true );

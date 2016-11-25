@@ -8,7 +8,7 @@
 using namespace IL;
 
 VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, bool verbose )
-	: Component( "OMX.broadcom.video_encode", { 200 }, { 201 }, verbose )
+	: Component( "OMX.broadcom.video_encode", { PortInit( 200, Video ) }, { PortInit( 201, Video ) }, verbose )
 	, mCodingType( coding_type )
 	, mBuffer( nullptr )
 	, mDataAvailable( false )
@@ -124,6 +124,12 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 
 VideoEncode::~VideoEncode()
 {
+}
+
+
+OMX_ERRORTYPE VideoEncode::SetupTunnel( Component* next, uint8_t port_input )
+{
+	return Component::SetupTunnel( 201, next, port_input );
 }
 
 

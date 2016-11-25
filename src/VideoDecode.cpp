@@ -8,7 +8,7 @@
 using namespace IL;
 
 VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verbose )
-	: Component( "OMX.broadcom.video_decode", { 130 }, { 131 }, verbose )
+	: Component( "OMX.broadcom.video_decode", { PortInit( 130, Video ) }, { PortInit( 131, Video ) }, verbose )
 	, mCodingType( coding_type )
 	, mBuffer( nullptr )
 	, mFirstData( true )
@@ -62,6 +62,12 @@ VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verb
 
 VideoDecode::~VideoDecode()
 {
+}
+
+
+OMX_ERRORTYPE VideoDecode::SetupTunnel( Component* next, uint8_t port_input )
+{
+	return Component::SetupTunnel( 131, next, port_input );
 }
 
 
@@ -124,7 +130,7 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 		def.nPortIndex = mOutputPorts[131].nTunnelPort;
 		mOutputPorts[131].pTunnel->SetParameter( OMX_IndexParamPortDefinition, &def );
 
-		SetupTunnel( 131, mOutputPorts[131].pTunnel, mOutputPorts[131].nTunnelPort );
+		Component::SetupTunnel( 131, mOutputPorts[131].pTunnel, mOutputPorts[131].nTunnelPort );
 
 		mOutputPorts[131].pTunnel->SendCommand( OMX_CommandPortEnable, mOutputPorts[131].nTunnelPort, nullptr );
 		mOutputPorts[131].pTunnel->SetState( StateExecuting );

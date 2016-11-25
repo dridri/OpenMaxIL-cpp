@@ -7,7 +7,7 @@
 using namespace IL;
 
 VideoRender::VideoRender( uint32_t offset_x, uint32_t offset_y, uint32_t width, uint32_t height, bool verbose )
-	: Component( "OMX.broadcom.video_render", { 90 }, std::vector< uint8_t >(), verbose )
+	: Component( "OMX.broadcom.video_render", { PortInit( 90, Video ) }, std::vector< PortInit >(), verbose )
 {
 	OMX_CONFIG_DISPLAYREGIONTYPE region;
 	OMX_INIT_STRUCTURE( region );

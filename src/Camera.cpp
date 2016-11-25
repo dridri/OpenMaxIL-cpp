@@ -8,7 +8,7 @@
 using namespace IL;
 
 Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool high_speed, bool verbose )
-	: Component( "OMX.broadcom.camera", { 73 }, { 70, 71, 72 }, verbose )
+	: Component( "OMX.broadcom.camera", { PortInit( 73, Clock ) }, { PortInit( 70, Video ), PortInit( 71, Video ), PortInit( 72, Image ) }, verbose )
 	, mDeviceNumber( device_number )
 	, mWidth( width )
 	, mHeight( height )
@@ -45,6 +45,24 @@ OMX_ERRORTYPE Camera::SetState( const Component::State& st )
 	capture.nPortIndex = 71;
 	capture.bEnabled = OMX_TRUE;
 	return SetParameter( OMX_IndexConfigPortCapturing, &capture );
+}
+
+
+OMX_ERRORTYPE Camera::SetupTunnelPreview( Component* next, uint8_t port_input )
+{
+	return SetupTunnel( 70, next, port_input );
+}
+
+
+OMX_ERRORTYPE Camera::SetupTunnelVideo( Component* next, uint8_t port_input )
+{
+	return SetupTunnel( 71, next, port_input );
+}
+
+
+OMX_ERRORTYPE Camera::SetupTunnelImage( Component* next, uint8_t port_input )
+{
+	return SetupTunnel( 72, next, port_input );
 }
 
 

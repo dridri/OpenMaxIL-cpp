@@ -14,13 +14,13 @@ int main( int ac, char** av )
 
 	Camera* camera = new Camera( 1280, 720, 0, true, true );
 	VideoEncode* encode = new VideoEncode( 2048, VideoEncode::CodingAVC, true );
-	camera->SetupTunnel( 71, encode, 200 );
+	camera->SetupTunnelVideo( encode );
 	camera->SetState( Component::StateExecuting );
 	encode->SetState( Component::StateExecuting );
 
 	VideoDecode* decode = new VideoDecode( 0, VideoDecode::CodingAVC, true );
 	VideoRender* render = new VideoRender( true );
-	decode->SetupTunnel( 131, render, 90 );
+	decode->SetupTunnel( render );
 	decode->SetState( Component::StateExecuting );
 	render->SetState( Component::StateExecuting );
 

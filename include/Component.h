@@ -22,12 +22,19 @@ public:
 		StatePause,
 		StateWaitForResources
 	} State;
+	typedef enum {
+		None = 0x0,
+		Clock = 0x1,
+		Audio = 0x2,
+		Image = 0x4,
+		Video = 0x8
+	} PortType;
 
 	const std::string& name() const;
 	const State state();
 
 	virtual OMX_ERRORTYPE SetState( const State& st );
-	OMX_ERRORTYPE SetupTunnel( uint8_t port_output, Component* next, uint8_t port_input );
+	OMX_ERRORTYPE SetupTunnel( uint8_t port_output, Component* next, uint8_t port_input = 0 );
 
 	OMX_ERRORTYPE SendCommand( OMX_COMMANDTYPE Cmd, OMX_U32 nParam1, OMX_PTR pCmdData );
 	OMX_ERRORTYPE GetParameter( OMX_INDEXTYPE nParamIndex, OMX_PTR pComponentParameterStructure );
@@ -36,7 +43,14 @@ public:
 	OMX_ERRORTYPE SetConfig( OMX_INDEXTYPE nIndex, OMX_PTR pComponentConfigStructure );
 
 protected:
-	Component( const std::string& name, const std::vector< uint8_t >& input_ports, const std::vector< uint8_t >& output_ports, bool verbose );
+	class PortInit {
+	public:
+		PortInit() : id(0), type(None) {}
+		PortInit(uint8_t i, PortType t) : id(i), type(t) {}
+		uint8_t id;
+		PortType type;
+	};
+	Component( const std::string& name, const std::vector< PortInit >& input_ports, const std::vector< PortInit >& output_ports, bool verbose );
 	virtual ~Component();
 
 	virtual OMX_ERRORTYPE EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );
@@ -60,6 +74,7 @@ protected:
 
 	typedef struct Port {
 		uint8_t nPort;
+		PortType type;
 		bool bEnabled;
 		bool bTunneled;
 		Component* pTunnel;

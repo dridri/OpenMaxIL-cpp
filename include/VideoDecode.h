@@ -31,7 +31,9 @@ public:
 
 	VideoDecode( uint32_t fps, const CodingType& coding_type = CodingAVC, bool verbose = false );
 	~VideoDecode();
+
 	virtual OMX_ERRORTYPE SetState( const State& st );
+	OMX_ERRORTYPE SetupTunnel( Component* next, uint8_t port_input = 0 );
 
 	const bool needData() const;
 	void fillInput( uint8_t* pBuf, uint32_t len );

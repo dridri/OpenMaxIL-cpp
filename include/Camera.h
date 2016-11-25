@@ -77,6 +77,9 @@ public:
 	Camera( uint32_t width, uint32_t height, uint32_t device_number = 0, bool high_speed = false, bool verbose = false );
 	~Camera();
 	virtual OMX_ERRORTYPE SetState( const State& st );
+	OMX_ERRORTYPE SetupTunnelPreview( Component* next, uint8_t port_input = 0 );
+	OMX_ERRORTYPE SetupTunnelVideo( Component* next, uint8_t port_input = 0 );
+	OMX_ERRORTYPE SetupTunnelImage( Component* next, uint8_t port_input = 0 );
 
 	OMX_ERRORTYPE setFramerate( uint32_t fps );
 	OMX_ERRORTYPE setBrightness( uint32_t value );

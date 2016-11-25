@@ -12,7 +12,7 @@ int main( int ac, char** av )
 
 	VideoDecode* decode = new VideoDecode( 30, VideoDecode::CodingAVC, true );
 	VideoRender* render = new VideoRender( true );
-	decode->SetupTunnel( 131, render, 90 );
+	decode->SetupTunnel( render );
 
 	decode->SetState( Component::StateExecuting );
 	render->SetState( Component::StateExecuting );
