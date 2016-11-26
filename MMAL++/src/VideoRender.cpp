@@ -9,16 +9,19 @@ VideoRender::VideoRender( uint32_t offset_x, uint32_t offset_y, uint32_t width, 
 	param.hdr.id = MMAL_PARAMETER_DISPLAYREGION;
 	param.hdr.size = sizeof(MMAL_DISPLAYREGION_T);
 
-	param.set = (MMAL_DISPLAYSETTYPE)( MMAL_DISPLAY_SET_FULLSCREEN | MMAL_DISPLAY_SET_NOASPECT | MMAL_DISPLAY_SET_LAYER | ( width != 0 and height != 0 ? MMAL_DISPLAY_SET_DEST_RECT : 0 ) );
-	param.fullscreen = (MMAL_BOOL_T)( width == 0 and height == 0 );
-	if ( width != 0 and height != 0 ) {
-		param.dest_rect.x = offset_x;
-		param.dest_rect.y = offset_y;
-		param.dest_rect.width = width;
-		param.dest_rect.height = height;
-	}
-	param.noaspect = MMAL_TRUE;
-	param.layer = 0;
+// 	param.set = ( MMAL_DISPLAY_SET_FULLSCREEN | MMAL_DISPLAY_SET_NOASPECT | MMAL_DISPLAY_SET_LAYER | ( width != 0 and height != 0 ? MMAL_DISPLAY_SET_DEST_RECT : 0 ) );
+// 	param.fullscreen = (MMAL_BOOL_T)( width == 0 and height == 0 );
+// 	if ( width != 0 and height != 0 ) {
+// 		param.dest_rect.x = offset_x;
+// 		param.dest_rect.y = offset_y;
+// 		param.dest_rect.width = width;
+// 		param.dest_rect.height = height;
+// 	}
+// 	param.noaspect = MMAL_TRUE;
+// 	param.layer = 0;
+
+	param.set = MMAL_DISPLAY_SET_FULLSCREEN;
+	param.fullscreen = 1;
 
 	mmal_port_parameter_set( mHandle->input[0], &param.hdr );
 }

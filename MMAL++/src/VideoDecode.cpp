@@ -15,7 +15,7 @@ VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verb
 	format_in->es->video.height = format_in->es->video.crop.height = 0;
 	format_in->es->video.frame_rate.num = fps;
 	format_in->es->video.frame_rate.den = 1;
-	format_in->es->video.par.num = 1;
+	format_in->es->video.par.num = 0;
 	format_in->es->video.par.den = 1;
 // 	format_in->flags |= MMAL_ES_FORMAT_FLAG_FRAMED; // Nope
 	mHandle->input[0]->buffer_num = mHandle->input[0]->buffer_num_recommended;
@@ -24,8 +24,24 @@ VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verb
 		vcos_log_error( "Unable to set format on video decoder input port" );
 	}
 
+	MMAL_ES_FORMAT_T* format_out = mHandle->output[0]->format;
+	format_out->type = MMAL_ES_TYPE_VIDEO;
+	format_out->encoding = MMAL_ENCODING_OPAQUE;
+	format_out->encoding_variant = MMAL_ENCODING_I420;
+	format_out->es->video.width = format_in->es->video.crop.width = 0;
+	format_out->es->video.height = format_in->es->video.crop.height = 0;
+	if ( mmal_port_format_commit( mHandle->output[0] ) != MMAL_SUCCESS ) {
+		vcos_log_error( "Unable to set format on video decoder output port" );
+	}
+
 	mmal_port_parameter_set_boolean( mHandle->input[0], MMAL_PARAMETER_VIDEO_DECODE_ERROR_CONCEALMENT, false );
 	mmal_port_parameter_set_boolean( mHandle->input[0], MMAL_PARAMETER_VIDEO_INTERPOLATE_TIMESTAMPS, false );
+// 	mmal_port_parameter_set_uint32( mHandle->input[0], MMAL_PARAMETER_VIDEO_MAX_NUM_CALLBACKS, -5 );
+
+	MMAL_PARAMETER_VIDEO_INTERLACE_TYPE_T interlace_type = { { MMAL_PARAMETER_VIDEO_INTERLACE_TYPE, sizeof( interlace_type ) } };
+	mmal_port_parameter_get( mHandle->output[0], &interlace_type.hdr );
+	interlace_type.eMode = MMAL_InterlaceFieldsInterleavedLowerFirst;
+	mmal_port_parameter_set( mHandle->output[0], &interlace_type.hdr );
 
 	mInputPool = mmal_port_pool_create( mHandle->input[0], mHandle->input[0]->buffer_num, mHandle->input[0]->buffer_size );
 }
@@ -58,8 +74,6 @@ int VideoDecode::SetState( const Component::State& st )
 
 void VideoDecode::InputBufferCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* buffer )
 {
-	MMAL_BUFFER_HEADER_T* new_buffer;
-
 	mmal_buffer_header_release( buffer );
 }
 

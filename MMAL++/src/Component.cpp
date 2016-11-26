@@ -63,8 +63,9 @@ int Component::InitComponent()
 		status = mmal_port_disable( mHandle->input[port] );
 	}
 	for ( uint32_t port = 0; port < mHandle->output_num; port++ ) {
-		status = mmal_port_parameter_set_boolean( mHandle->output[port], MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE );
+		if ( ( status = mmal_port_parameter_set_boolean( mHandle->output[port], MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE ) ) != MMAL_SUCCESS ) {
 			printf( "Error : mmal_port_parameter_set_boolean( output[%d], MMAL_PARAMETER_ZERO_COPY, true ) failed\n", port );
+		}
 		status = mmal_port_disable( mHandle->output[port] );
 	}
 

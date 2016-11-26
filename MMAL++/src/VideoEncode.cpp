@@ -1,6 +1,6 @@
-#include "VideoEncode.h"
 #include <unistd.h>
 #include <iostream>
+#include "VideoEncode.h"
 
 using namespace MMAL;
 
@@ -18,21 +18,21 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 		vcos_log_error( "Unable to set format on video encoder output port" );
 	}
 
-	MMAL_PARAMETER_VIDEO_RATECONTROL_T param = { { MMAL_PARAMETER_RATECONTROL, sizeof(param) }, MMAL_VIDEO_RATECONTROL_VARIABLE_SKIP_FRAMES };
-	mmal_port_parameter_set( mHandle->output[0] , &param.hdr );
+// 	MMAL_PARAMETER_VIDEO_RATECONTROL_T param = { { MMAL_PARAMETER_RATECONTROL, sizeof(param) }, MMAL_VIDEO_RATECONTROL_VARIABLE_SKIP_FRAMES };
+// 	mmal_port_parameter_set( mHandle->output[0] , &param.hdr );
 
 	if ( coding_type == CodingAVC ) {
-		setIDRPeriod( 3 );
-		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_HEADER_ON_OPEN, true );
+		setIDRPeriod( 10 );
+// 		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_HEADER_ON_OPEN, true );
 		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_INLINE_HEADER, true );
-		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_H264_LOW_DELAY_HRD_FLAG, true );
+// 		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_H264_LOW_DELAY_HRD_FLAG, true );
 		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_H264_LOW_LATENCY, true );
-		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_SEI_ENABLE, true );
-		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_H264_DISABLE_CABAC, true ); // TEST
-		MMAL_PARAMETER_VIDEO_EEDE_ENABLE_T eede = { { MMAL_PARAMETER_VIDEO_EEDE_ENABLE, sizeof(param) }, 1 };
-		mmal_port_parameter_set( mHandle->output[0] , &eede.hdr );
-		MMAL_PARAMETER_VIDEO_EEDE_LOSSRATE_T lossrate = { { MMAL_PARAMETER_VIDEO_EEDE_ENABLE, sizeof(param) }, 32 };
-		mmal_port_parameter_set( mHandle->output[0] , &lossrate.hdr );
+// 		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_SEI_ENABLE, true );
+// 		mmal_port_parameter_set_boolean( mHandle->output[0], MMAL_PARAMETER_VIDEO_ENCODE_H264_DISABLE_CABAC, true ); // TEST
+// 		MMAL_PARAMETER_VIDEO_EEDE_ENABLE_T eede = { { MMAL_PARAMETER_VIDEO_EEDE_ENABLE, sizeof(param) }, 1 };
+// 		mmal_port_parameter_set( mHandle->output[0] , &eede.hdr );
+// 		MMAL_PARAMETER_VIDEO_EEDE_LOSSRATE_T lossrate = { { MMAL_PARAMETER_VIDEO_EEDE_ENABLE, sizeof(param) }, 32 };
+// 		mmal_port_parameter_set( mHandle->output[0] , &lossrate.hdr );
 		MMAL_PARAMETER_VIDEO_PROFILE_T profile = { { MMAL_PARAMETER_PROFILE, sizeof(profile) }, { { MMAL_VIDEO_PROFILE_H264_HIGH, MMAL_VIDEO_LEVEL_H264_4 } } };
 		mmal_port_parameter_set( mHandle->output[0] , &profile.hdr );
 	}
@@ -74,6 +74,7 @@ int VideoEncode::setIDRPeriod( uint32_t period )
 
 void VideoEncode::OutputBufferCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* buffer )
 {
+	printf( "OutputBufferCallback 1\n" );
 	MMAL_BUFFER_HEADER_T* new_buffer;
 	Buffer buf;
 
@@ -84,9 +85,11 @@ void VideoEncode::OutputBufferCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T*
 	memcpy( buf.buf, buffer->data, buf.size );
 	mBuffers.emplace_back( buf );
 	mDataAvailableCond.notify_all();
+	locker.unlock();
 	mmal_buffer_header_mem_unlock( buffer );
 
 	mmal_buffer_header_release( buffer );
+	printf( "OutputBufferCallback 2\n" );
 	if ( port->is_enabled ) {
 		MMAL_STATUS_T status = MMAL_SUCCESS;
 		if ( ( new_buffer = mmal_queue_get( mOutputPool->queue ) ) ) {
@@ -96,6 +99,7 @@ void VideoEncode::OutputBufferCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T*
 			fprintf( stderr, "Unable to return a buffer to the video_encode port\n" );
 		}
 	}
+	printf( "OutputBufferCallback 3\n" );
 }
 
 

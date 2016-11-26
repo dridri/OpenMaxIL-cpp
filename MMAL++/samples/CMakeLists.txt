@@ -17,3 +17,6 @@ target_link_libraries( camera_live "MMAL++" -lmmal_components -lmmal_util -lmmal
 
 add_executable( camera_encode camera_encode.cpp )
 target_link_libraries( camera_encode "MMAL++" -lmmal_components -lmmal_util -lmmal_core -lmmal -lbcm_host -lvcos -lvchiq_arm -lrt -lpthread -ldl )
+
+add_executable( file_decode file_decode.cpp )
+target_link_libraries( file_decode "MMAL++" -lmmal_components -lmmal_util -lmmal_core -lmmal -lbcm_host -lvcos -lvchiq_arm -lrt -lpthread -ldl )
