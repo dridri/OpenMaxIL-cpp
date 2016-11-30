@@ -37,6 +37,7 @@ public:
 	void fillInput( uint8_t* pBuf, uint32_t len );
 
 protected:
+	void ControlCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* buffer );
 	void InputBufferCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* buffer );
 
 	MMAL_POOL_T* mInputPool;

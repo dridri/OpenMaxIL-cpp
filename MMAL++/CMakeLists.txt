@@ -45,6 +45,6 @@ set( SOURCES
 
 add_library( "MMAL++" ${SOURCES} )
 
-target_link_libraries( "MMAL++" -lbcm_host -lvcos -lvchiq_arm -lrt -lpthread -ldl )
+target_link_libraries( "MMAL++" -lmmal_components -lmmal_util -lmmal_core -lmmal -lcontainers -lbcm_host -lvcos -lvchiq_arm -lrt -lpthread -ldl )
 
-add_subdirectory( samples )
+# add_subdirectory( samples )

@@ -1,4 +1,4 @@
-#include "VideoDecode.h"
+#include "MMAL++/VideoDecode.h"
 #include <unistd.h>
 #include <iostream>
 
@@ -65,10 +65,19 @@ int VideoDecode::SetState( const Component::State& st )
 		return ret;
 	}
 
+	EnablePort( mHandle->control, (void (*)(MMAL_PORT_T*, MMAL_BUFFER_HEADER_T*))&VideoDecode::ControlCallback );
 	EnablePort( mHandle->input[0], (void (*)(MMAL_PORT_T*, MMAL_BUFFER_HEADER_T*))&VideoDecode::InputBufferCallback );
 
 	mNeedData = true;
 	return FillPortBuffer( mHandle->input[0], mInputPool );
+}
+
+
+void VideoDecode::ControlCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* buffer )
+{
+	char s[5] = "";
+	strncpy( s, (char*)&buffer->cmd, 4 );
+	printf( "ControlCallback : %s\n", s ); fflush(stdout);
 }
 
 
@@ -86,13 +95,30 @@ const bool VideoDecode::needData() const
 
 void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 {
+	MMAL_STATUS_T status;
 	MMAL_BUFFER_HEADER_T* buffer;
 
 	if ( ( buffer = mmal_queue_get( mInputPool->queue ) ) != nullptr ) {
-		memcpy( buffer->data, pBuf, len );
+		char s[5] = "";
+		strncpy( s, (char*)&buffer->cmd, 4 );
+// 		printf( "Copy %d bytes to %p [%d, %s, %d, %08X]\n", len, buffer->data, buffer->alloc_size, s, buffer->offset, buffer->flags );
+		mmal_buffer_header_mem_lock( buffer );
+// 		printf( "locked\n" );
+// 		memcpy( buffer->data, pBuf, len );
+		uint32_t* start = (uint32_t*)buffer->data;
+		uint32_t* end = start + ( len >> 2 ) + 1;
+		uint32_t* copy = (uint32_t*)pBuf;
+		while ( start < end ) {
+			*(start++) = *(copy++);
+		}
 		buffer->length = len;
-		mmal_port_send_buffer( mHandle->input[0], buffer );
+// 		printf( "Copy Ok\n" );
+		mmal_buffer_header_mem_unlock( buffer );
+// 		printf( "unlocked\n" );
+		if ( ( status = mmal_port_send_buffer( mHandle->input[0], buffer ) ) != MMAL_SUCCESS ) {
+			printf( "VideoDecode::fillInput error : mmal_port_send_buffer failed (%d)\n", status ); fflush(stdout);
+		}
 	} else {
-		fprintf( stderr, "VideoDecode::fillInput error : No input buffer available in queue\n" ); fflush(stderr);
+		printf( "VideoDecode::fillInput error : No input buffer available in queue\n" ); fflush(stdout);
 	}
 }

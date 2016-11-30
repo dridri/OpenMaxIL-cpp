@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <iostream>
-#include "VideoEncode.h"
+#include "MMAL++/VideoEncode.h"
 
 using namespace MMAL;
 

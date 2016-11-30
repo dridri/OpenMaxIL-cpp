@@ -1,4 +1,4 @@
-#include "NullSink.h"
+#include "MMAL++/NullSink.h"
 
 using namespace MMAL;
 

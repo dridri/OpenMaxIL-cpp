@@ -1,4 +1,4 @@
-#include "VideoSplitter.h"
+#include "MMAL++/VideoSplitter.h"
 
 using namespace MMAL;
 
@@ -18,7 +18,7 @@ int VideoSplitter::SetupTunnel( Component* next, uint8_t port_input )
 {
 	for ( uint32_t i = 0; i < 4; i++ ) {
 		if ( mOutputPorts[i].bTunneled == false ) {
-			return Component::SetupTunnel( mOutputPorts[i].nPort, next, port_input );
+			return Component::SetupTunnel( i, next, port_input );
 		}
 	}
 	return -1;

@@ -1,4 +1,4 @@
-#include "Resize.h"
+#include "MMAL++/Resize.h"
 
 using namespace MMAL;
 

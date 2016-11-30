@@ -29,6 +29,12 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 	if ( coding_type == CodingAVC ) {
 		setIDRPeriod( 1 );
 
+		OMX_PARAM_U32TYPE MBmode;
+		OMX_INIT_STRUCTURE( MBmode );
+		MBmode.nPortIndex = 201;
+		MBmode.nU32 = 4; //1=4x4, 2=8x8, 4=16x16
+		SetConfig( OMX_IndexConfigBrcmVideoH264IntraMBMode, &MBmode );
+
 		OMX_CONFIG_BOOLEANTYPE headerOnOpen;
 		OMX_INIT_STRUCTURE( headerOnOpen );
 		headerOnOpen.bEnabled = OMX_TRUE;
@@ -39,6 +45,12 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 		inlinePPSSPS.nPortIndex = 201;
 		inlinePPSSPS.bEnabled = OMX_TRUE;
 		SetParameter( OMX_IndexParamBrcmVideoAVCInlineHeaderEnable, &inlinePPSSPS );
+
+		OMX_CONFIG_PORTBOOLEANTYPE inlineVectors;
+		OMX_INIT_STRUCTURE( inlineVectors );
+		inlineVectors.nPortIndex = 201;
+		inlinePPSSPS.bEnabled = OMX_TRUE;
+		SetParameter( OMX_IndexParamBrcmVideoAVCInlineVectorsEnable, &inlineVectors );
 
 		OMX_VIDEO_PARAM_PROFILELEVELTYPE profile;
 		OMX_INIT_STRUCTURE( profile );
@@ -83,7 +95,7 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 		avc.nPortIndex = 201;
 		GetParameter( OMX_IndexParamVideoAvc, &avc );
 	// 	avc.nSliceHeaderSpacing = 15; // ??
-		avc.nPFrames = 2; // 10
+		avc.nPFrames = 2;
 		avc.nBFrames = 0;
 		avc.bUseHadamard = OMX_TRUE;
 		avc.nRefFrames = 0;
@@ -177,8 +189,9 @@ OMX_ERRORTYPE VideoEncode::setIDRPeriod( uint32_t period )
 	OMX_VIDEO_CONFIG_AVCINTRAPERIOD idr;
 	OMX_INIT_STRUCTURE( idr );
 	idr.nPortIndex = 201;
+	GetParameter( OMX_IndexConfigVideoAVCIntraPeriod, &idr );
 	idr.nIDRPeriod = period;
-	idr.nPFrames = period;
+// 	idr.nPFrames = period;
 	return SetParameter( OMX_IndexConfigVideoAVCIntraPeriod, &idr );
 }
 
