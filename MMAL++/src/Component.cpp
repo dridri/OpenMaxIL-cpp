@@ -1,4 +1,4 @@
-#include "Component.h"
+#include "MMAL++/Component.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -81,6 +81,8 @@ int Component::SetupTunnel( uint8_t port_output, Component* next, uint8_t port_i
 	if ( mHandle == nullptr or next == nullptr or next->mHandle == nullptr ) {
 		return -1;
 	}
+
+	mmal_format_copy( mHandle->output[port_output]->format, next->mHandle->input[port_input]->format );
 
 	status = mmal_connection_create( &connection, mHandle->output[port_output], next->mHandle->input[port_input], MMAL_CONNECTION_FLAG_TUNNELLING | MMAL_CONNECTION_FLAG_ALLOCATION_ON_INPUT );
 	if ( status == MMAL_SUCCESS ) {

@@ -11,6 +11,7 @@ public:
 	~VideoRender();
 
 	int setMirror( bool hrzn, bool vert );
+	int setStereo( bool stereo );
 protected:
 };
 

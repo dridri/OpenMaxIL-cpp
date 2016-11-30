@@ -1,5 +1,5 @@
 #include <unistd.h>
-#include "Camera.h"
+#include "MMAL++/Camera.h"
 
 using namespace MMAL;
 
