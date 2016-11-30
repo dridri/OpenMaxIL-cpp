@@ -34,7 +34,7 @@ public:
 	int SetupTunnel( Component* next, uint8_t port_input = 0 );
 
 	const bool needData() const;
-	void fillInput( uint8_t* pBuf, uint32_t len );
+	void fillInput( uint8_t* pBuf, uint32_t len, bool corrupted = false );
 
 protected:
 	void InputBufferCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* buffer );

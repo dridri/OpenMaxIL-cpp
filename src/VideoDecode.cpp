@@ -113,7 +113,7 @@ const bool VideoDecode::needData() const
 }
 
 
-void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
+void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len, bool corrupted )
 {
 	if ( not mVideoRunning and mDecoderValid ) {
 		mVideoRunning = true;
@@ -182,7 +182,7 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
 		// Send buffer to GPU
 		mBuffer->nTimeStamp = { 0, 0 };
 		mBuffer->nFilledLen = len;
-		mBuffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME | OMX_BUFFERFLAG_DATACORRUPT | ( mFirstData ? OMX_BUFFERFLAG_STARTTIME : OMX_BUFFERFLAG_TIME_UNKNOWN );
+		mBuffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME | ( corrupted ? OMX_BUFFERFLAG_DATACORRUPT : 0 ) | ( mFirstData ? OMX_BUFFERFLAG_STARTTIME : OMX_BUFFERFLAG_TIME_UNKNOWN );
 		printf( "Filling buffer\n" );
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
 		printf( "Filling buffer OK\n" );

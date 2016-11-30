@@ -87,6 +87,7 @@ protected:
 	OMX_HANDLETYPE mHandle;
 	std::map< uint8_t, Port > mInputPorts;
 	std::map< uint8_t, Port > mOutputPorts;
+	std::list< OMX_U8* > mAllocatedBuffers;
 	static uint64_t ticks64();
 
 private:
@@ -95,7 +96,7 @@ private:
 	static OMX_ERRORTYPE filled( OMX_HANDLETYPE handle, Component* component, OMX_BUFFERHEADERTYPE* buf );
 	static bool mCoreReady;
 	static void onexit();
-	static std::list< OMX_U8* > mAllocatedBuffers;
+	static std::list< OMX_U8* > mAllAllocatedBuffers;
 	static std::list< Component* > mComponents;
 
 	int InitComponent();

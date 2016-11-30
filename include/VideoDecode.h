@@ -36,7 +36,7 @@ public:
 	OMX_ERRORTYPE SetupTunnel( Component* next, uint8_t port_input = 0 );
 
 	const bool needData() const;
-	void fillInput( uint8_t* pBuf, uint32_t len );
+	void fillInput( uint8_t* pBuf, uint32_t len, bool corrupted = false );
 
 protected:
 	virtual OMX_ERRORTYPE EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );

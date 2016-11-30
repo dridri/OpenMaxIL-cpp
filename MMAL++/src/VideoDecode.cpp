@@ -84,13 +84,15 @@ const bool VideoDecode::needData() const
 }
 
 
-void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len )
+void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len, bool corrupted )
 {
 	MMAL_BUFFER_HEADER_T* buffer;
+	(void)corrupted; // TODO : try to use it
 
 	if ( ( buffer = mmal_queue_get( mInputPool->queue ) ) != nullptr ) {
 		memcpy( buffer->data, pBuf, len );
 		buffer->length = len;
+		buffer->flags = ( corrupted ? MMAL_BUFFER_HEADER_FLAG_CORRUPTED : 0 );
 		mmal_port_send_buffer( mHandle->input[0], buffer );
 	} else {
 		fprintf( stderr, "VideoDecode::fillInput error : No input buffer available in queue\n" ); fflush(stderr);
