@@ -41,6 +41,7 @@ set( SOURCES
 	src/VideoRender.cpp
 	src/VideoEncode.cpp
 	src/VideoDecode.cpp
+	src/EGLRender.cpp
 )
 
 add_library( "OpenMaxIL++" ${SOURCES} )

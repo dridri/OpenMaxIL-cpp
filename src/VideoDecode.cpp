@@ -113,6 +113,32 @@ const bool VideoDecode::needData() const
 }
 
 
+const uint32_t VideoDecode::width()
+{
+	if ( mDecoderValid ) {
+		OMX_PARAM_PORTDEFINITIONTYPE def;
+		OMX_INIT_STRUCTURE( def );
+		def.nPortIndex = 131;
+		GetParameter( OMX_IndexParamPortDefinition, &def );
+		return def.format.video.nFrameWidth;
+	}
+	return 0;
+}
+
+
+const uint32_t VideoDecode::height()
+{
+	if ( mDecoderValid ) {
+		OMX_PARAM_PORTDEFINITIONTYPE def;
+		OMX_INIT_STRUCTURE( def );
+		def.nPortIndex = 131;
+		GetParameter( OMX_IndexParamPortDefinition, &def );
+		return def.format.video.nFrameHeight;
+	}
+	return 0;
+}
+
+
 void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len, bool corrupted )
 {
 	if ( not mVideoRunning and mDecoderValid ) {
