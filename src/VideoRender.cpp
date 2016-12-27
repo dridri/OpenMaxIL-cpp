@@ -50,3 +50,14 @@ OMX_ERRORTYPE VideoRender::setMirror( bool hrzn, bool vert )
 	mirror.eMirror = eMirror;
 	return SetConfig( OMX_IndexConfigCommonMirror, &mirror );
 }
+
+
+OMX_ERRORTYPE VideoRender::setStereo( bool stereo )
+{
+	OMX_CONFIG_DISPLAYREGIONTYPE region;
+	OMX_INIT_STRUCTURE( region );
+	region.nPortIndex = 90;
+	region.set = OMX_DISPLAY_SET_MODE;
+	region.mode = OMX_DISPLAY_MODE_STEREO_LEFT_TO_LEFT;
+	return SetConfig( OMX_IndexConfigDisplayRegion, &region );
+}

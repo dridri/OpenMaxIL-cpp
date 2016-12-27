@@ -47,7 +47,7 @@ Component::Component( const std::string& name, const std::vector< PortInit >& in
 	if ( not mCoreReady ) {
 		mCoreReady = true;
 		atexit( &Component::onexit );
-		// TODO : OMX_Init()
+		OMX_Init();
 	}
 
 	mComponents.emplace_back( this );

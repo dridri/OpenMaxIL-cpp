@@ -11,6 +11,7 @@ public:
 	~VideoRender();
 
 	OMX_ERRORTYPE setMirror( bool hrzn, bool vert );
+	OMX_ERRORTYPE setStereo( bool stereo );
 protected:
 };
 
