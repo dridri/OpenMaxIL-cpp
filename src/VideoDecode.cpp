@@ -41,21 +41,6 @@ VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verb
 	unit.eEncapsulationType = OMX_DataEncapsulationElementaryStream;
 	SetParameter( OMX_IndexParamBrcmDataUnit, &unit );
 
-	if ( coding_type == CodingAVC ) {
-		OMX_PARAM_U32TYPE extrabuffers;
-		OMX_INIT_STRUCTURE( extrabuffers );
-		extrabuffers.nPortIndex = 131;
-		extrabuffers.nU32 = 1;
-		SetParameter( OMX_IndexParamBrcmExtraBuffers, &extrabuffers );
-/*
-		OMX_PARAM_IMAGEPOOLSIZETYPE imagepool;
-		imagepool.width = 1280;
-		imagepool.height = 720;
-		imagepool.num_pages = 2;
-		SetParameter( OMX_IndexParamImagePoolSize, &imagepool );
-*/
-	}
-
 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
@@ -110,6 +95,12 @@ OMX_ERRORTYPE VideoDecode::EmptyBufferDone( OMX_BUFFERHEADERTYPE* buf )
 const bool VideoDecode::needData() const
 {
 	return mNeedData;
+}
+
+
+const bool VideoDecode::valid() const
+{
+	return mDecoderValid;
 }
 
 
@@ -209,14 +200,29 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len, bool corrupted )
 		mBuffer->nTimeStamp = { 0, 0 };
 		mBuffer->nFilledLen = len;
 		mBuffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME | ( corrupted ? OMX_BUFFERFLAG_DATACORRUPT : 0 ) | ( mFirstData ? OMX_BUFFERFLAG_STARTTIME : OMX_BUFFERFLAG_TIME_UNKNOWN );
-		printf( "Filling buffer\n" );
+// 		printf( "Filling buffer\n" );
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
-		printf( "Filling buffer OK\n" );
+		static int err_cnt = 0;
 		if ( err != OMX_ErrorNone ) {
 			printf( "EmptyThisBuffer error : 0x%08X\n", (uint32_t)err );
+			/*
 			SendCommand( OMX_CommandFlush, 130, nullptr );
 			SendCommand( OMX_CommandFlush, 131, nullptr );
 			mFirstData = true;
+			err_cnt++;
+			if ( err_cnt == 4 ) {
+				AllocateBuffers( &mBuffer, 130, true );
+				mBufferPtr = mBuffer->pBuffer;
+				mVideoRunning = false;
+			}
+			if ( err_cnt >= 8 ) {
+				exit(0);
+				exit(0);
+				while(1)usleep(1000000);
+			}
+			*/
+		} else {
+// 			printf( "Filling buffer OK\n" );
 		}
 
 		mFirstData = false;

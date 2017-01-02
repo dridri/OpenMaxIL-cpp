@@ -35,6 +35,7 @@ public:
 	virtual OMX_ERRORTYPE SetState( const State& st );
 	OMX_ERRORTYPE SetupTunnel( Component* next, uint8_t port_input = 0 );
 
+	const bool valid() const;
 	const uint32_t width();
 	const uint32_t height();
 	const bool needData() const;

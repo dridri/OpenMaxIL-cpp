@@ -28,7 +28,7 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 
 	if ( coding_type == CodingAVC ) {
 		setIDRPeriod( 1 );
-
+/*
 		OMX_PARAM_U32TYPE MBmode;
 		OMX_INIT_STRUCTURE( MBmode );
 		MBmode.nPortIndex = 201;
@@ -58,12 +58,12 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 		profile.eProfile = OMX_VIDEO_AVCProfileHigh;
 		profile.eLevel = OMX_VIDEO_AVCLevel4;
 		SetParameter( OMX_IndexParamVideoProfileLevelCurrent, &profile );
-
+*/
 		OMX_CONFIG_BOOLEANTYPE lowLatency;
 		OMX_INIT_STRUCTURE( lowLatency );
 		lowLatency.bEnabled = OMX_TRUE;
 		SetConfig( OMX_IndexConfigBrcmVideoH264LowLatency, &lowLatency );
-
+/*
 		OMX_VIDEO_PARAM_QUANTIZATIONTYPE quantization;
 		OMX_INIT_STRUCTURE( quantization );
 		quantization.nPortIndex = 201;
@@ -89,13 +89,13 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 		avcsei.nPortIndex = 201;
 		avcsei.bEnable = OMX_TRUE;
 		SetParameter( OMX_IndexParamBrcmVideoAVCSEIEnable, &avcsei );
-
+*/
 		OMX_VIDEO_PARAM_AVCTYPE avc;
 		OMX_INIT_STRUCTURE( avc );
 		avc.nPortIndex = 201;
 		GetParameter( OMX_IndexParamVideoAvc, &avc );
 	// 	avc.nSliceHeaderSpacing = 15; // ??
-		avc.nPFrames = 2;
+		avc.nPFrames = 1;
 		avc.nBFrames = 0;
 		avc.bUseHadamard = OMX_TRUE;
 		avc.nRefFrames = 0;
@@ -123,11 +123,12 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 		if ( SetParameter( OMX_IndexParamVideoAvc, &avc ) != OMX_ErrorNone ) {
 			exit(0);
 		}
-
+/*
 		OMX_CONFIG_BOOLEANTYPE temporal_denoise;
 		OMX_INIT_STRUCTURE( temporal_denoise );
 		temporal_denoise.bEnabled = OMX_FALSE;
 		SetConfig( OMX_IndexConfigTemporalDenoiseEnable, &temporal_denoise );
+*/
 	}
 
 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
@@ -196,6 +197,13 @@ OMX_ERRORTYPE VideoEncode::setIDRPeriod( uint32_t period )
 }
 
 
+const std::map< uint32_t, uint8_t* >& VideoEncode::headers() const
+{
+	return mHeaders;
+}
+
+
+
 OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
@@ -237,6 +245,12 @@ uint32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 		if ( err != OMX_ErrorNone ) {
 			return err;
 		}
+	}
+
+	if ( datalen < 50 and mHeaders.find( datalen ) == mHeaders.end() ) {
+		uint8_t* data = (uint8_t*)malloc( datalen );
+		memcpy( data, pBuf, datalen );
+		mHeaders.emplace( std::make_pair( datalen, data ) );
 	}
 
 	return datalen;
