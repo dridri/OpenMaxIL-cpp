@@ -7,10 +7,13 @@
 
 using namespace IL;
 
+static void PrintBuffer( void* _buf, int size );
+
 VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verbose )
 	: Component( "OMX.broadcom.video_decode", { PortInit( 130, Video ) }, { PortInit( 131, Video ) }, verbose )
 	, mCodingType( coding_type )
 	, mBuffer( nullptr )
+	, mOutputBuffer( nullptr )
 	, mFirstData( true )
 	, mDecoderValid( false )
 	, mVideoRunning( false )
@@ -50,6 +53,17 @@ VideoDecode::~VideoDecode()
 }
 
 
+void VideoDecode::setRGB565Mode( bool en )
+{
+	OMX_PARAM_PORTDEFINITIONTYPE def;
+	OMX_INIT_STRUCTURE( def );
+	def.nPortIndex = 131;
+	GetParameter( OMX_IndexParamPortDefinition, &def );
+	def.format.video.eColorFormat = en ? OMX_COLOR_Format16bitRGB565 : OMX_COLOR_FormatYUV420PackedPlanar;
+	SetParameter( OMX_IndexParamPortDefinition, &def );
+}
+
+
 OMX_ERRORTYPE VideoDecode::SetupTunnel( Component* next, uint8_t port_input )
 {
 	return Component::SetupTunnel( 131, next, port_input );
@@ -62,6 +76,7 @@ OMX_ERRORTYPE VideoDecode::SetState( const Component::State& st )
 		AllocateBuffers( &mBuffer, 130, true );
 		mBufferPtr = mBuffer->pBuffer;
 		mOutputPorts[130].bEnabled = true;
+		memcpy( &mBufferCopy, mBuffer, sizeof(mBufferCopy) );
 	}
 
 	if ( mBuffer ) {
@@ -98,9 +113,9 @@ const bool VideoDecode::needData() const
 }
 
 
-const bool VideoDecode::valid() const
+const bool VideoDecode::valid()
 {
-	return mDecoderValid;
+	return width() > 0 and height() > 0;
 }
 
 
@@ -135,23 +150,25 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len, bool corrupted )
 	if ( not mVideoRunning and mDecoderValid ) {
 		mVideoRunning = true;
 
-		mOutputPorts[131].pTunnel->SetState( StateIdle );
-		mOutputPorts[131].pTunnel->SendCommand( OMX_CommandPortDisable, mOutputPorts[131].nTunnelPort, nullptr );
-		SendCommand( OMX_CommandPortDisable, 131, nullptr );
+		if ( mOutputPorts[131].bTunneled and mOutputPorts[131].pTunnel ) {
+			mOutputPorts[131].pTunnel->SetState( StateIdle );
+			mOutputPorts[131].pTunnel->SendCommand( OMX_CommandPortDisable, mOutputPorts[131].nTunnelPort, nullptr );
+			SendCommand( OMX_CommandPortDisable, 131, nullptr );
 
-		OMX_PARAM_PORTDEFINITIONTYPE def;
-		OMX_INIT_STRUCTURE( def );
-		def.nPortIndex = 131;
-		GetParameter( OMX_IndexParamPortDefinition, &def );
-		def.eDomain = OMX_PortDomainVideo;
-		def.nPortIndex = mOutputPorts[131].nTunnelPort;
-		mOutputPorts[131].pTunnel->SetParameter( OMX_IndexParamPortDefinition, &def );
+			OMX_PARAM_PORTDEFINITIONTYPE def;
+			OMX_INIT_STRUCTURE( def );
+			def.nPortIndex = 131;
+			GetParameter( OMX_IndexParamPortDefinition, &def );
+			def.eDomain = OMX_PortDomainVideo;
+			def.nPortIndex = mOutputPorts[131].nTunnelPort;
+			mOutputPorts[131].pTunnel->SetParameter( OMX_IndexParamPortDefinition, &def );
 
-		Component::SetupTunnel( 131, mOutputPorts[131].pTunnel, mOutputPorts[131].nTunnelPort );
+			Component::SetupTunnel( 131, mOutputPorts[131].pTunnel, mOutputPorts[131].nTunnelPort );
 
-		mOutputPorts[131].pTunnel->SendCommand( OMX_CommandPortEnable, mOutputPorts[131].nTunnelPort, nullptr );
-		mOutputPorts[131].pTunnel->SetState( StateExecuting );
-		SendCommand( OMX_CommandPortEnable, 131, nullptr );
+			mOutputPorts[131].pTunnel->SendCommand( OMX_CommandPortEnable, mOutputPorts[131].nTunnelPort, nullptr );
+			mOutputPorts[131].pTunnel->SetState( StateExecuting );
+			SendCommand( OMX_CommandPortEnable, 131, nullptr );
+		}
 	}
 
 	if ( mBuffer ) {
@@ -178,14 +195,18 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len, bool corrupted )
 		mNeedData = false;
 */
 		// Ensure that everything is ok
-		uint32_t sz = len;
-		if ( sz > mBuffer->nAllocLen ) {
-			printf( "LEAK : %d > %d\n", sz, mBuffer->nAllocLen );
-			sz = mBuffer->nAllocLen;
+		if ( len > mBuffer->nAllocLen ) {
+			printf( "LEAK : %d > %d\n", len, mBuffer->nAllocLen );
+			len = mBuffer->nAllocLen;
+			PrintBuffer( pBuf, len );
+			fflush( stdout );
 		}
-		if ( mBufferPtr != mBuffer->pBuffer ) {
-			printf( "LEAK : %p != %p ======================\n", mBufferPtr, mBuffer->pBuffer );
-			mBuffer->pBuffer = mBufferPtr;
+		if ( mBuffer->pBuffer != mBufferPtr ) {
+			printf( "LEAK : %p != %p\n", mBuffer->pBuffer, mBufferPtr );
+// 			mBuffer->pBuffer = mBufferPtr;
+			memcpy( mBuffer, &mBufferCopy, sizeof(mBufferCopy) );
+			PrintBuffer( pBuf, len );
+			fflush( stdout );
 		}
 
 		// Manually copy buffer, since libcofi_rpi's memcpy causes random segfault (missalign?)
@@ -204,27 +225,80 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len, bool corrupted )
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
 		static int err_cnt = 0;
 		if ( err != OMX_ErrorNone ) {
-			printf( "EmptyThisBuffer error : 0x%08X\n", (uint32_t)err );
-			/*
-			SendCommand( OMX_CommandFlush, 130, nullptr );
-			SendCommand( OMX_CommandFlush, 131, nullptr );
-			mFirstData = true;
+			printf( "EmptyThisBuffer error (#%d) : 0x%08X (bufSize : %d ; corrupted : %d)\n", err_cnt, (uint32_t)err, len, corrupted );
+			PrintBuffer( pBuf, len );
+			fflush( stdout );
 			err_cnt++;
-			if ( err_cnt == 4 ) {
-				AllocateBuffers( &mBuffer, 130, true );
-				mBufferPtr = mBuffer->pBuffer;
-				mVideoRunning = false;
-			}
-			if ( err_cnt >= 8 ) {
-				exit(0);
-				exit(0);
-				while(1)usleep(1000000);
-			}
-			*/
 		} else {
 // 			printf( "Filling buffer OK\n" );
 		}
 
 		mFirstData = false;
 	}
+}
+
+
+OMX_ERRORTYPE VideoDecode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
+{
+	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
+	mDataAvailable = true;
+	mDataAvailableCond.notify_all();
+	return OMX_ErrorNone;
+}
+
+
+const bool VideoDecode::dataAvailable() const
+{
+	return mDataAvailable;
+}
+
+
+uint32_t VideoDecode::getOutputData( uint8_t* pBuf, bool wait )
+{
+	if ( mOutputPorts[131].bTunneled == false and mOutputBuffer == nullptr ) {
+		AllocateBuffers( &mOutputBuffer, 131, true );
+		mOutputPorts[131].bEnabled = true;
+	}
+
+	uint32_t datalen = 0;
+
+	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
+
+	if ( mDataAvailable ) {
+		memcpy( pBuf, mOutputBuffer->pBuffer, mOutputBuffer->nFilledLen );
+		datalen = mOutputBuffer->nFilledLen;
+		mDataAvailable = false;
+	} else if ( wait ) {
+		mDataAvailableCond.wait( locker );
+		memcpy( pBuf, mOutputBuffer->pBuffer, mOutputBuffer->nFilledLen );
+		datalen = mOutputBuffer->nFilledLen;
+		mDataAvailable = false;
+	} else {
+		return OMX_ErrorOverflow;
+	}
+
+	locker.unlock();
+
+	if ( mOutputBuffer ) {
+		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, mOutputBuffer );
+		if ( err != OMX_ErrorNone ) {
+			return err;
+		}
+	}
+
+	return datalen;
+}
+
+
+static void PrintBuffer( void* _buf, int size )
+{
+	unsigned char* buf = (unsigned char*)_buf;
+	int b;
+	for(b=0; b<size; b++){
+		printf( "%02X ", buf[b]);
+		if(b > 0 && (b+1) % 16 == 0){
+			printf( "\n");
+		}
+	}
+	printf( "\n");
 }

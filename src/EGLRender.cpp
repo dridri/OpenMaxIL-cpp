@@ -21,6 +21,7 @@ EGLRender::~EGLRender()
 
 OMX_ERRORTYPE EGLRender::setEGLImage( EGLImageKHR image )
 {
+	SendCommand( OMX_CommandPortEnable, 221, nullptr );
 	return ((OMX_COMPONENTTYPE*)mHandle)->UseEGLImage( mHandle, &mBuffer, 221, nullptr, image );
 }
 
@@ -30,4 +31,5 @@ OMX_ERRORTYPE EGLRender::sinkToEGL()
 	if ( state() == StateExecuting and mBuffer != nullptr ) {
 		return ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, mBuffer );
 	}
+	return OMX_ErrorIncorrectStateOperation;
 }

@@ -75,6 +75,18 @@ Component::Component( const std::string& name, const std::vector< PortInit >& in
 
 Component::~Component()
 {
+	SetState( Component::StateIdle );
+	omx_block_until_state_changed( OMX_StateIdle );
+	OMX_FreeHandle( mHandle );
+	for ( OMX_U8* buf : mAllocatedBuffers ) {
+		for ( OMX_U8* buf2 : mAllAllocatedBuffers ) {
+			if ( buf2 == buf ) {
+				mAllAllocatedBuffers.remove( buf2 );
+				break;
+			}
+		}
+		vcos_free( buf );
+	}
 }
 
 
@@ -442,7 +454,9 @@ OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U
 {
 	if ( mVerbose and event != OMX_EventCmdComplete ) {
 		if ( event == OMX_EventError ) {
-			fprintf( stderr, "[%s]OMX Error %X\n", mName.c_str(), data1 );
+			if ( data1 != OMX_ErrorSameState ) {
+				fprintf( stderr, "[%s]OMX Error %X\n", mName.c_str(), data1 );
+			}
 		} else {
 			fprintf( stderr, "Event on %p (%s) type %X [ %d, %d, %p ]\n", mHandle, mName.c_str(), event, data1, data2, eventdata );
 		}
@@ -453,14 +467,14 @@ OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U
 
 OMX_ERRORTYPE Component::EmptyBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
-	fprintf( stderr, "EmptyBufferDone on %p (%s)\n", mHandle, mName.c_str() );
+// 	fprintf( stderr, "EmptyBufferDone on %p (%s)\n", mHandle, mName.c_str() );
 	return OMX_ErrorNone;
 }
 
 
 OMX_ERRORTYPE Component::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
-	fprintf( stderr, "FillBufferDone on %p (%s)\n", mHandle, mName.c_str() );
+// 	fprintf( stderr, "FillBufferDone on %p (%s)\n", mHandle, mName.c_str() );
 	return OMX_ErrorNone;
 }
 

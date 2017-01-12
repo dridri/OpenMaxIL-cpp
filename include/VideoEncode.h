@@ -31,6 +31,7 @@ public:
 
 	VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type = CodingAVC, bool verbose = false );
 	~VideoEncode();
+	void RequestIFrame();
 
 	virtual OMX_ERRORTYPE SetState( const State& st );
 	OMX_ERRORTYPE SetupTunnel( Component* next, uint8_t port_input = 0 );

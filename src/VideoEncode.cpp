@@ -34,12 +34,12 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 		MBmode.nPortIndex = 201;
 		MBmode.nU32 = 4; //1=4x4, 2=8x8, 4=16x16
 		SetConfig( OMX_IndexConfigBrcmVideoH264IntraMBMode, &MBmode );
-
+*/
 		OMX_CONFIG_BOOLEANTYPE headerOnOpen;
 		OMX_INIT_STRUCTURE( headerOnOpen );
 		headerOnOpen.bEnabled = OMX_TRUE;
 		SetConfig( OMX_IndexParamBrcmHeaderOnOpen, &headerOnOpen );
-
+/*
 		OMX_CONFIG_PORTBOOLEANTYPE inlinePPSSPS;
 		OMX_INIT_STRUCTURE( inlinePPSSPS );
 		inlinePPSSPS.nPortIndex = 201;
@@ -71,7 +71,7 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 		quantization.nQpP = 50;
 		quantization.nQpB = 0;
 		SetParameter( OMX_IndexParamVideoQuantization, &quantization );
-
+*/
 		OMX_VIDEO_EEDE_ENABLE eede_enable;
 		OMX_INIT_STRUCTURE( eede_enable );
 		eede_enable.nPortIndex = 201;
@@ -83,7 +83,7 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 		eede_lossrate.nPortIndex = 201;
 		eede_lossrate.loss_rate = 32;
 		SetParameter( OMX_IndexParamBrcmEEDELossRate, &eede_lossrate );
-
+/*
 		OMX_PARAM_BRCMVIDEOAVCSEIENABLETYPE avcsei;
 		OMX_INIT_STRUCTURE( avcsei );
 		avcsei.nPortIndex = 201;
@@ -137,6 +137,15 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 
 VideoEncode::~VideoEncode()
 {
+}
+
+
+void VideoEncode::RequestIFrame()
+{
+	OMX_CONFIG_BOOLEANTYPE request;
+	OMX_INIT_STRUCTURE( request );
+	request.bEnabled = OMX_TRUE;
+	SetConfig( OMX_IndexConfigBrcmVideoRequestIFrame, &request );
 }
 
 
@@ -203,7 +212,6 @@ const std::map< uint32_t, uint8_t* >& VideoEncode::headers() const
 }
 
 
-
 OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
@@ -247,7 +255,7 @@ uint32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 		}
 	}
 
-	if ( datalen < 50 and mHeaders.find( datalen ) == mHeaders.end() ) {
+	if ( datalen < 32 and mHeaders.find( datalen ) == mHeaders.end() ) {
 		uint8_t* data = (uint8_t*)malloc( datalen );
 		memcpy( data, pBuf, datalen );
 		mHeaders.emplace( std::make_pair( datalen, data ) );
