@@ -177,6 +177,7 @@ int Component::InitComponent()
 	OMX_ERRORTYPE err = OMX_GetHandle( &mHandle, (char*)mName.c_str(), this, &cb );
 	if ( err != OMX_ErrorNone ) {
 		fprintf( stderr, "OMX_GetHandle(%s) failed : %X\n", mName.c_str(), err );
+		return -1;
 	} else if ( mVerbose ) {
 		fprintf( stderr, "OMX_GetHandle(%s) completed\n", mName.c_str() );
 	}
@@ -454,7 +455,7 @@ OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U
 {
 	if ( mVerbose and event != OMX_EventCmdComplete ) {
 		if ( event == OMX_EventError ) {
-			if ( data1 != OMX_ErrorSameState ) {
+			if ( (int)data1 != OMX_ErrorSameState ) {
 				fprintf( stderr, "[%s]OMX Error %X\n", mName.c_str(), data1 );
 			}
 		} else {

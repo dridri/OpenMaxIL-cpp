@@ -13,6 +13,10 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 	, mWidth( width )
 	, mHeight( height )
 {
+	if ( not Component::mHandle ) {
+		return;
+	}
+
 	Initialize( width, height );
 	if ( high_speed ) {
 		HighSpeedMode();
