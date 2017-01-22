@@ -140,6 +140,16 @@ VideoEncode::~VideoEncode()
 }
 
 
+OMX_ERRORTYPE VideoEncode::setInlinePPSSPS( bool en )
+{
+	OMX_CONFIG_PORTBOOLEANTYPE inlinePPSSPS;
+	OMX_INIT_STRUCTURE( inlinePPSSPS );
+	inlinePPSSPS.nPortIndex = 201;
+	inlinePPSSPS.bEnabled = (OMX_BOOL)en;
+	return SetParameter( OMX_IndexParamBrcmVideoAVCInlineHeaderEnable, &inlinePPSSPS );
+}
+
+
 void VideoEncode::RequestIFrame()
 {
 	OMX_CONFIG_BOOLEANTYPE request;
@@ -157,35 +167,42 @@ OMX_ERRORTYPE VideoEncode::SetupTunnel( Component* next, uint8_t port_input )
 
 OMX_ERRORTYPE VideoEncode::SetState( const Component::State& st )
 {
-	if ( mOutputPorts[201].bTunneled == false and mBuffer == nullptr ) {
-		AllocateBuffers( &mBuffer, 201, true );
-		mOutputPorts[201].bEnabled = true;
-		mBufferPtr = mBuffer->pBuffer;
+	OMX_ERRORTYPE ret = OMX_ErrorNone;
+
+	if ( st == StateExecuting ) {
+		bool first_setup = false;
+		if ( mOutputPorts[201].bTunneled == false and mBuffer == nullptr ) {
+			first_setup = true;
+			AllocateBuffers( &mBuffer, 201, true );
+			mOutputPorts[201].bEnabled = true;
+			mBufferPtr = mBuffer->pBuffer;
+		}
+
+		if ( mInputPorts[200].bTunneled ) {
+			OMX_PARAM_PORTDEFINITIONTYPE def;
+			OMX_INIT_STRUCTURE( def );
+			def.nPortIndex = mInputPorts[200].nTunnelPort;
+			mInputPorts[200].pTunnel->GetParameter( OMX_IndexParamPortDefinition, &def );
+			def.eDomain = OMX_PortDomainVideo;
+			def.nPortIndex = 200;
+			def.format.video.nStride = def.format.video.nFrameWidth;
+			def.format.video.nSliceHeight = def.format.video.nFrameHeight;
+			def.format.video.eCompressionFormat = (OMX_VIDEO_CODINGTYPE)mCodingType;
+			def.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
+			SetParameter( OMX_IndexParamPortDefinition, &def );
+		}
+
+		ret = IL::Component::SetState(st);
+		if ( ret != OMX_ErrorNone ) {
+			return ret;
+		}
+
+		if ( first_setup and mBuffer ) {
+			usleep( 1000 * 500 );
+			ret = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, mBuffer );
+		}
 	}
 
-	if ( mInputPorts[200].bTunneled ) {
-		OMX_PARAM_PORTDEFINITIONTYPE def;
-		OMX_INIT_STRUCTURE( def );
-		def.nPortIndex = mInputPorts[200].nTunnelPort;
-		mInputPorts[200].pTunnel->GetParameter( OMX_IndexParamPortDefinition, &def );
-		def.eDomain = OMX_PortDomainVideo;
-		def.nPortIndex = 200;
-		def.format.video.nStride = def.format.video.nFrameWidth;
-		def.format.video.nSliceHeight = def.format.video.nFrameHeight;
-		def.format.video.eCompressionFormat = (OMX_VIDEO_CODINGTYPE)mCodingType;
-		def.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
-		SetParameter( OMX_IndexParamPortDefinition, &def );
-	}
-
-	OMX_ERRORTYPE ret = IL::Component::SetState(st);
-	if ( ret != OMX_ErrorNone ) {
-		return ret;
-	}
-
-	if ( mBuffer ) {
-		usleep( 1000 * 500 );
-		ret = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, mBuffer );
-	}
 	return ret;
 }
 

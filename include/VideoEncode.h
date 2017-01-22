@@ -31,6 +31,8 @@ public:
 
 	VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type = CodingAVC, bool verbose = false );
 	~VideoEncode();
+
+	OMX_ERRORTYPE setInlinePPSSPS( bool en );
 	void RequestIFrame();
 
 	virtual OMX_ERRORTYPE SetState( const State& st );
