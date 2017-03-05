@@ -260,12 +260,13 @@ int Camera::HighSpeedMode()
 	SetConfig( OMX_IndexConfigBrcmCameraRnDPreprocess, &pre_post_process );
 	SetConfig( OMX_IndexConfigBrcmCameraRnDPostprocess, &pre_post_process );
 */
+/*
 	OMX_CONFIG_BOOLEANTYPE sharpen_disable;
 	OMX_INIT_STRUCTURE( sharpen_disable );
 	sharpen_disable.bEnabled = OMX_TRUE;
 	SetParameter( OMX_IndexParamSWSharpenDisable, &sharpen_disable );
 	SetParameter( OMX_IndexParamSWSaturationDisable, &sharpen_disable );
-
+*/
 
 	return 0;
 }
