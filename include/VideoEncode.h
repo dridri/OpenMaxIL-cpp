@@ -29,18 +29,22 @@ public:
 		CodingMVC = OMX_VIDEO_CodingMVC,
 	} CodingType;
 
-	VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type = CodingAVC, bool verbose = false );
+	VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type = CodingAVC, bool live_mode = false, bool verbose = false );
 	~VideoEncode();
 
+	OMX_ERRORTYPE setFramerate( uint32_t fps );
 	OMX_ERRORTYPE setInlinePPSSPS( bool en );
 	void RequestIFrame();
 
 	virtual OMX_ERRORTYPE SetState( const State& st );
 	OMX_ERRORTYPE SetupTunnel( Component* next, uint8_t port_input = 0 );
 
-	const bool dataAvailable() const;
+	const bool dataAvailable( bool wait = false );
+	void fillBuffer();
 	uint32_t getOutputData( uint8_t* pBuf, bool wait = true );
 	const std::map< uint32_t, uint8_t* >& headers() const;
+	OMX_U8* buffer() const;
+	OMX_U32 bufferLength() const;
 
 	OMX_ERRORTYPE setIDRPeriod( uint32_t period );
 

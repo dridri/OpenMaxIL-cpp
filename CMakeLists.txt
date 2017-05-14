@@ -37,7 +37,9 @@ set( SOURCES
 	src/Camera.cpp
 	src/NullSink.cpp
 	src/Resize.cpp
+	src/ImageEncode.cpp
 	src/VideoSplitter.cpp
+	src/SoftwareVideoSplitter.cpp
 	src/VideoRender.cpp
 	src/VideoEncode.cpp
 	src/VideoDecode.cpp
@@ -46,6 +48,6 @@ set( SOURCES
 
 add_library( "OpenMaxIL++" ${SOURCES} )
 
-target_link_libraries( "OpenMaxIL++" -lopenmaxil -lbcm_host -lvcos -lvchiq_arm -lrt -lpthread -ldl )
+target_link_libraries( "OpenMaxIL++" -lopenmaxil -lbcm_host -lvcsm -lvcos -lvchiq_arm -lrt -lpthread -ldl )
 
 add_subdirectory( samples )

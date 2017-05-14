@@ -24,7 +24,7 @@ VideoRender::VideoRender( uint32_t offset_x, uint32_t offset_y, uint32_t width, 
 	region.layer = 0;
 	SetConfig( OMX_IndexConfigDisplayRegion, &region );
 
-	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
+// 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
 

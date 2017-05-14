@@ -74,13 +74,16 @@ public:
 		ImageFilterMax = 0x7FFFFFFF
 	} ImageFilter;
 
-	Camera( uint32_t width, uint32_t height, uint32_t device_number = 0, bool high_speed = false, bool verbose = false );
+	Camera( uint32_t width, uint32_t height, uint32_t device_number = 0, bool high_speed = false, uint32_t sensor_mode = 0, bool verbose = false );
 	~Camera();
 	virtual OMX_ERRORTYPE SetState( const State& st );
+	OMX_ERRORTYPE SetCapturing( bool capturing, uint8_t port = 71 );
 	OMX_ERRORTYPE SetupTunnelPreview( Component* next, uint8_t port_input = 0 );
 	OMX_ERRORTYPE SetupTunnelVideo( Component* next, uint8_t port_input = 0 );
 	OMX_ERRORTYPE SetupTunnelImage( Component* next, uint8_t port_input = 0 );
 
+	OMX_ERRORTYPE setSensorMode( uint8_t mode );
+	OMX_ERRORTYPE setResolution( uint32_t width, uint32_t height );
 	OMX_ERRORTYPE setFramerate( uint32_t fps );
 	OMX_ERRORTYPE setBrightness( uint32_t value );
 	OMX_ERRORTYPE setSharpness( uint32_t value );
@@ -92,6 +95,11 @@ public:
 	OMX_ERRORTYPE setFrameStabilisation( bool enabled );
 	OMX_ERRORTYPE setMirror( bool hrzn, bool vert );
 
+	OMX_ERRORTYPE disableLensShading();
+	OMX_ERRORTYPE setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid_width, uint32_t grid_height, const uint8_t* ls_grid );
+
+	const uint8_t sensorMode();
+	const uint32_t framerate();
 	const uint32_t brightness();
 	const int32_t contrast();
 	const int32_t saturation();
@@ -100,13 +108,16 @@ protected:
 	virtual OMX_ERRORTYPE EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );
 
 private:
-	int Initialize( uint32_t width, uint32_t height );
-	int HighSpeedMode();
+	int Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode = 0 );
+	int HighSpeedMode( uint32_t sensor_mode = 0 );
 
 	uint32_t mDeviceNumber;
 	uint32_t mWidth;
 	uint32_t mHeight;
+	uint8_t mSensorMode;
 	bool mReady;
+	bool mVCSMReady;
+	uint32_t mLensShadingAlloc;
 };
 
 }; // namespace IL

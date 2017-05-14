@@ -1,5 +1,7 @@
 #include <unistd.h>
 #include "Camera.h"
+#include <bcm_host.h>
+#include <interface/vcsm/user-vcsm.h>
 #include <IL/OMX_Video.h>
 #include <IL/OMX_Types.h>
 #include <IL/OMX_Component.h>
@@ -7,19 +9,25 @@
 
 using namespace IL;
 
-Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool high_speed, bool verbose )
+OMX_BUFFERHEADERTYPE* test_buffer;
+
+Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool high_speed, uint32_t sensor_mode, bool verbose )
 	: Component( "OMX.broadcom.camera", { PortInit( 73, Clock ) }, { PortInit( 70, Video ), PortInit( 71, Video ), PortInit( 72, Image ) }, verbose )
 	, mDeviceNumber( device_number )
 	, mWidth( width )
 	, mHeight( height )
+	, mSensorMode( 0 )
+	, mReady( false )
+	, mVCSMReady( false )
+	, mLensShadingAlloc( 0 )
 {
 	if ( not Component::mHandle ) {
 		return;
 	}
 
-	Initialize( width, height );
+	Initialize( width, height, sensor_mode );
 	if ( high_speed ) {
-		HighSpeedMode();
+		HighSpeedMode( sensor_mode );
 	}
 
 	while ( not mReady ) {
@@ -29,24 +37,42 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 		fprintf( stderr, "Camera %d ready\n", mDeviceNumber );
 	}
 
-	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
+// 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
 
 Camera::~Camera()
 {
+	printf( "Deleting Camera...\n" );
+	SetCapturing( false );
+
+	if ( mLensShadingAlloc != 0 ) {
+		OMX_PARAM_LENSSHADINGOVERRIDETYPE lens_override;
+		OMX_INIT_STRUCTURE( lens_override );
+		lens_override.bEnabled = OMX_FALSE;
+		OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
+		if ( ret != OMX_ErrorNone ) {
+			fprintf( stderr, "Cannot disable lens shading override : 0x%08X\n", ret ); fflush(stderr);
+		}
+		vcsm_free( mLensShadingAlloc );
+	}
+
+	printf( "Deleting Camera ok\n" );
 }
 
 
 OMX_ERRORTYPE Camera::SetState( const Component::State& st )
 {
 	OMX_ERRORTYPE err = IL::Component::SetState(st);
-	if ( err != OMX_ErrorNone ) {
-		return err;
-	}
+	return err;
+}
+
+
+OMX_ERRORTYPE Camera::SetCapturing( bool capturing, uint8_t port )
+{
 	OMX_CONFIG_PORTBOOLEANTYPE capture;
 	OMX_INIT_STRUCTURE( capture );
-	capture.nPortIndex = 71;
+	capture.nPortIndex = port;
 	capture.bEnabled = OMX_TRUE;
 	return SetParameter( OMX_IndexConfigPortCapturing, &capture );
 }
@@ -79,7 +105,7 @@ OMX_ERRORTYPE Camera::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 
 }
 
 
-int Camera::Initialize( uint32_t width, uint32_t height )
+int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 {
 	// Enable callback for camera
 	OMX_CONFIG_REQUESTCALLBACKTYPE cbtype;
@@ -107,7 +133,8 @@ int Camera::Initialize( uint32_t width, uint32_t height )
 	if ( width < 1920 and height < 1080 ) {
 		def.format.video.xFramerate   = 60 << 16; // default to 60 FPS
 	}
-	def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
+// 	def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
+	def.format.video.nStride      = 0;
 	def.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
 	SetParameter( OMX_IndexParamPortDefinition, &def );
 
@@ -116,6 +143,46 @@ int Camera::Initialize( uint32_t width, uint32_t height )
 	def.nPortIndex = 71;
 	SetParameter( OMX_IndexParamPortDefinition, &def );
 
+	def.nPortIndex = 72;
+	GetParameter( OMX_IndexParamPortDefinition, &def );
+	switch( sensor_mode ) {
+		case 7 :
+			def.format.image.nFrameWidth = 640;
+			def.format.image.nFrameHeight = 480;
+			break;
+		case 6 :
+			def.format.image.nFrameWidth = 1280;
+			def.format.image.nFrameHeight = 720;
+			break;
+		case 5 :
+			def.format.image.nFrameWidth = 1640;
+			def.format.image.nFrameHeight = 922;
+			break;
+		case 4 :
+			def.format.image.nFrameWidth = 1640;
+			def.format.image.nFrameHeight = 1232;
+			break;
+		case 3 :
+		case 2 :
+			def.format.image.nFrameWidth = 3240;
+			def.format.image.nFrameHeight = 2464;
+			break;
+		case 1 :
+			def.format.image.nFrameWidth = 1920;
+			def.format.image.nFrameHeight = 1080;
+			break;
+		case 0 :
+		default :
+			def.format.image.nFrameWidth = width;
+			def.format.image.nFrameHeight = height;
+			break;
+	}
+// 	def.format.image.nStride      = ( def.format.image.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
+	def.format.image.nStride      = 0;
+	def.format.image.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
+	SetParameter( OMX_IndexParamPortDefinition, &def );
+
+	setFramerate( def.format.video.xFramerate );
 	setBrightness( 50 );
 	setContrast( 0 );
 	setSaturation( 0 );
@@ -129,7 +196,90 @@ int Camera::Initialize( uint32_t width, uint32_t height )
 }
 
 
-int Camera::HighSpeedMode()
+OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height )
+{
+	if ( mSensorMode == 7 ) {
+		mWidth = std::min( width, 640u );
+		mHeight = std::min( height, 480u );
+	} else if ( mSensorMode == 6 ) {
+		mWidth = std::min( width, 1280u );
+		mHeight = std::min( height, 720u );
+	} else if ( mSensorMode == 5 ) {
+		mWidth = std::min( width, 1640u );
+		mHeight = std::min( height, 922u );
+	} else if ( mSensorMode == 4 ) {
+		mWidth = std::min( width, 1640u );
+		mHeight = std::min( height, 1232u );
+	} else if ( mSensorMode == 1 ) {
+		mWidth = std::min( width, 1920u );
+		mHeight = std::min( height, 1080u );
+	} else {
+		mWidth = std::min( width, 3240u );
+		mHeight = std::min( height, 2464u );
+	}
+
+	OMX_PARAM_PORTDEFINITIONTYPE def;
+	OMX_INIT_STRUCTURE( def );
+
+	def.nPortIndex = 70;
+	GetParameter( OMX_IndexParamPortDefinition, &def );
+	def.format.video.nFrameWidth  = mWidth;
+	def.format.video.nFrameHeight = mHeight;
+// 	def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
+	def.format.video.nStride      = 0;
+	SetParameter( OMX_IndexParamPortDefinition, &def );
+	GetParameter( OMX_IndexParamPortDefinition, &def );
+	def.nPortIndex = 71;
+	SetParameter( OMX_IndexParamPortDefinition, &def );
+
+	def.nPortIndex = 72;
+	GetParameter( OMX_IndexParamPortDefinition, &def );
+	def.format.image.nFrameWidth = mWidth;
+	def.format.image.nFrameHeight = mHeight;
+// 	def.format.image.nStride      = ( def.format.image.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
+	def.format.image.nStride      = 0;
+	SetParameter( OMX_IndexParamPortDefinition, &def );
+
+	return OMX_ErrorNone;
+}
+
+
+OMX_ERRORTYPE Camera::setSensorMode( uint8_t sensor_mode )
+{
+	OMX_PARAM_U32TYPE sensorMode;
+	OMX_INIT_STRUCTURE( sensorMode );
+	sensorMode.nPortIndex = OMX_ALL;
+
+// 	if ( sensor_mode != 0 ) {
+		sensorMode.nU32 = sensor_mode;
+/*	} else {
+		if ( mWidth <= 640 && mHeight <= 480 ) {
+			sensorMode.nU32 = 7;
+		} else if ( mWidth <= 1280 && mHeight <= 720 ) {
+			sensorMode.nU32 = 6;
+		} else if ( mWidth == 1920 && mHeight == 1080 ) {
+			sensorMode.nU32 = 1;
+		} else if ( mWidth <= 1640 && mHeight <= 922 ) {
+			sensorMode.nU32 = 5;
+		} else if ( mWidth <= 1640 && mHeight <= 1232 ) {
+			sensorMode.nU32 = 4;
+		} else if ( mWidth <= 3240 && mHeight <= 2464 ) {
+			sensorMode.nU32 = 2;
+		} else {
+			sensorMode.nU32 = 0;
+		}
+	}
+*/
+	OMX_ERRORTYPE err = SetParameter( OMX_IndexParamCameraCustomSensorConfig, &sensorMode );
+	if ( err == OMX_ErrorNone ) {
+		mSensorMode = sensorMode.nU32;
+	}
+
+	return err;
+}
+
+
+int Camera::HighSpeedMode( uint32_t sensor_mode )
 {
 	OMX_PRIORITYMGMTTYPE prio;
 	OMX_INIT_STRUCTURE( prio );
@@ -155,63 +305,81 @@ int Camera::HighSpeedMode()
 	OMX_PARAM_U32TYPE sensorMode;
 	OMX_INIT_STRUCTURE( sensorMode );
 	sensorMode.nPortIndex = OMX_ALL;
-	if ( mWidth <= 640 && mHeight <= 480 ) {
-		sensorMode.nU32 = 7;
-	} else if ( mWidth <= 1280 && mHeight <= 720 ) {
-		sensorMode.nU32 = 6;
-	} else if ( mWidth == 1920 && mHeight == 1080 ) {
-		sensorMode.nU32 = 1;
+	if ( sensor_mode != 0 ) {
+		sensorMode.nU32 = sensor_mode;
 	} else {
-		sensorMode.nU32 = 0;
+		if ( mWidth <= 640 && mHeight <= 480 ) {
+			sensorMode.nU32 = 7;
+		} else if ( mWidth <= 1280 && mHeight <= 720 ) {
+			sensorMode.nU32 = 6;
+		} else if ( mWidth == 1920 && mHeight == 1080 ) {
+			sensorMode.nU32 = 1;
+		} else if ( mWidth <= 1640 && mHeight <= 922 ) {
+			sensorMode.nU32 = 5;
+		} else if ( mWidth <= 1640 && mHeight <= 1232 ) {
+			sensorMode.nU32 = 4;
+		} else if ( mWidth <= 3240 && mHeight <= 2464 ) {
+			sensorMode.nU32 = 2;
+		} else {
+			sensorMode.nU32 = 0;
+		}
 	}
-	SetParameter( OMX_IndexParamCameraCustomSensorConfig, &sensorMode );
+
+	OMX_ERRORTYPE err = SetParameter( OMX_IndexParamCameraCustomSensorConfig, &sensorMode );
+	if ( err == OMX_ErrorNone ) {
+		mSensorMode = sensorMode.nU32;
+	}
 
 	OMX_CONFIG_ZEROSHUTTERLAGTYPE zero_shutter;
 	OMX_INIT_STRUCTURE( zero_shutter );
-	zero_shutter.bZeroShutterMode = 0;
-	zero_shutter.bConcurrentCapture = 1;
+	zero_shutter.bZeroShutterMode = OMX_TRUE;
+	zero_shutter.bConcurrentCapture = OMX_TRUE;
 	SetParameter( OMX_IndexParamCameraZeroShutterLag, &zero_shutter );
+
 
 	OMX_CONFIG_CAPTUREMODETYPE capture_mode;
 	OMX_INIT_STRUCTURE( capture_mode );
 	capture_mode.nPortIndex = 71;
 	capture_mode.bContinuous = OMX_TRUE;
 	SetConfig( OMX_IndexConfigCaptureMode, &capture_mode );
-/*
+
+
 	OMX_PARAM_CAMERAIMAGEPOOLTYPE pool;
 	OMX_INIT_STRUCTURE( pool );
 	GetParameter( OMX_IndexParamCameraImagePool, &pool );
-// 	pool.nNumHiResVideoFrames = 1;
-// 	pool.nHiResVideoWidth = WIDTH;
-// 	pool.nHiResVideoHeight = HEIGHT;
-	pool.eHiResVideoType = OMX_COLOR_FormatYUV420PackedPlanar;
-// 	pool.nNumHiResStillsFrames = 1; <<==2
-// 	pool.nHiResStillsWidth = WIDTH;
-// 	pool.nHiResStillsHeight = HEIGHT;
+// 	pool.nNumHiResVideoFrames = 2;
+// 	pool.nHiResVideoWidth = mWidth;
+// 	pool.nHiResVideoHeight = mHeight;
+// 	pool.eHiResVideoType = OMX_COLOR_FormatYUV420PackedPlanar;
+	pool.nNumHiResStillsFrames = 2;
+	pool.nHiResStillsWidth = 3240;
+	pool.nHiResStillsHeight = 2464;
 	pool.eHiResStillsType = OMX_COLOR_FormatYUV420PackedPlanar;
-// 	pool.nNumLoResFrames = 1;
-// 	pool.nLoResWidth = WIDTH;
-// 	pool.nLoResHeight = HEIGHT;
-	pool.eLoResType = OMX_COLOR_FormatYUV420PackedPlanar;
-// 	pool.nNumSnapshotFrames = 1;
-	pool.eSnapshotType = OMX_COLOR_FormatYUV420PackedPlanar;
+// 	pool.nNumLoResFrames = 2;
+// 	pool.nLoResWidth = mWidth;
+// 	pool.nLoResHeight = mHeight;
+// 	pool.eLoResType = OMX_COLOR_FormatYUV420PackedPlanar;
+// 	pool.nNumSnapshotFrames = 2;
+// 	pool.eSnapshotType = OMX_COLOR_FormatYUV420PackedPlanar;
 	pool.eInputPoolMode = OMX_CAMERAIMAGEPOOLINPUTMODE_TWOPOOLS;
-// 	pool.nNumInputVideoFrames = 1;
-// 	pool.nInputVideoWidth = WIDTH;
-// 	pool.nInputVideoHeight = HEIGHT;
-	pool.eInputVideoType = OMX_COLOR_FormatYUV420PackedPlanar;
-// 	pool.nNumInputStillsFrames = 1; //// <== 0
-// 	pool.nInputStillsWidth = WIDTH;
-// 	pool.nInputStillsHeight = HEIGHT;
+// 	pool.nNumInputVideoFrames = 2;
+// 	pool.nInputVideoWidth = mWidth;
+// 	pool.nInputVideoHeight = mHeight;
+// 	pool.eInputVideoType = OMX_COLOR_FormatYUV420PackedPlanar;
+	pool.nNumInputStillsFrames = 2;
+	pool.nInputStillsWidth = 3240;
+	pool.nInputStillsHeight = 2464;
 	pool.eInputStillsType = OMX_COLOR_FormatYUV420PackedPlanar;
-	SetParameter( OMX_IndexParamCameraImagePool, &pool );
+	if ( SetParameter( OMX_IndexParamCameraImagePool, &pool ) != OMX_ErrorNone ) {
+		exit(0);
+	}
 
 	OMX_PARAM_CAMERACAPTUREMODETYPE captureMode;
 	OMX_INIT_STRUCTURE( captureMode );
 	captureMode.nPortIndex = OMX_ALL;
 	captureMode.eMode = OMX_CameraCaptureModeResumeViewfinderImmediately;
 	SetParameter( OMX_IndexParamCameraCaptureMode, &captureMode );
-*/
+
 	OMX_PARAM_CAMERADISABLEALGORITHMTYPE disableAlgorithm;
 	OMX_INIT_STRUCTURE( disableAlgorithm );
 	disableAlgorithm.bDisabled = OMX_TRUE;
@@ -269,6 +437,99 @@ int Camera::HighSpeedMode()
 */
 
 	return 0;
+}
+
+
+OMX_ERRORTYPE Camera::disableLensShading()
+{
+	OMX_PARAM_U32TYPE isp_override;
+	OMX_INIT_STRUCTURE( isp_override );
+	isp_override.nPortIndex = OMX_ALL;
+	isp_override.nU32 = ~0x08;
+
+	OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmIspBlockOverride, &isp_override );
+	if ( ret != OMX_ErrorNone ) {
+		fprintf( stderr, "Cannot disable lens shading : 0x%08X\n", ret ); fflush(stderr);
+	}
+
+	return ret;
+}
+
+
+OMX_ERRORTYPE Camera::setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid_width, uint32_t grid_height, const uint8_t* ls_grid )
+{
+	OMX_PARAM_LENSSHADINGOVERRIDETYPE lens_override;
+	OMX_INIT_STRUCTURE( lens_override );
+
+	if ( mLensShadingAlloc != 0 ) {
+		lens_override.bEnabled = OMX_FALSE;
+		OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
+		if ( ret != OMX_ErrorNone ) {
+			fprintf( stderr, "Cannot disable lens shading override : 0x%08X\n", ret ); fflush(stderr);
+			return ret;
+		}
+		vcsm_free( mLensShadingAlloc );
+	}
+
+	if ( not mVCSMReady ) {
+		mVCSMReady = true;
+		vcsm_init();
+	}
+
+	lens_override.bEnabled = OMX_TRUE;
+	lens_override.nGridCellSize = grid_cell_size;
+	lens_override.nWidth = grid_width;
+	lens_override.nStride = grid_width;
+	lens_override.nHeight = grid_height;
+	lens_override.nRefTransform = 3;
+
+	mLensShadingAlloc = vcsm_malloc( lens_override.nStride * lens_override.nHeight * 4, (char*)"ls_grid" );
+	printf( "mLensShadingAlloc : %d (%d)\n", mLensShadingAlloc, lens_override.nStride * lens_override.nHeight * 4 );
+	lens_override.nMemHandleTable = vcsm_vc_hdl_from_hdl( mLensShadingAlloc );
+	printf( "lens_override.nMemHandleTable : %d\n", lens_override.nMemHandleTable );
+	void* grid = vcsm_lock( mLensShadingAlloc );
+	printf( "grid : %p\n", grid );
+	memcpy( grid, ls_grid, lens_override.nStride * lens_override.nHeight * 4 );
+	vcsm_unlock_hdl( mLensShadingAlloc );
+
+	OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
+	if ( ret != OMX_ErrorNone ) {
+		fprintf( stderr, "Cannot disable lens shading : 0x%08X\n", ret ); fflush(stderr);
+	}
+
+	return ret;
+}
+
+
+const uint8_t Camera::sensorMode()
+{
+	return mSensorMode;
+}
+
+
+const uint32_t Camera::framerate()
+{
+	OMX_CONFIG_FRAMERATETYPE framerate;
+	OMX_INIT_STRUCTURE( framerate );
+	framerate.nPortIndex = 70;
+	GetConfig( OMX_IndexConfigVideoFramerate, &framerate );
+	uint32_t rate = framerate.xEncodeFramerate >> 16;
+
+	OMX_PARAM_U32TYPE sensorMode;
+	OMX_INIT_STRUCTURE( sensorMode );
+	sensorMode.nPortIndex = OMX_ALL;
+	GetParameter( OMX_IndexParamCameraCustomSensorConfig, &sensorMode );
+	if ( sensorMode.nU32 == 5 or sensorMode.nU32 == 4 ) {
+		rate = std::min( rate, 40u );
+	}
+	if ( sensorMode.nU32 == 3 or sensorMode.nU32 == 2 ) {
+		rate = std::min( rate, 15u );
+	}
+	if ( sensorMode.nU32 == 1 ) {
+		rate = std::min( rate, 30u );
+	}
+
+	return rate;
 }
 
 
