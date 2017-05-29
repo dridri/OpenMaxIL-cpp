@@ -14,9 +14,12 @@ int main( int ac, char** av )
 	Camera* camera = new Camera( 1280, 720, 0, true, true );
 	VideoEncode* encode = new VideoEncode( 4 * 1024, VideoEncode::CodingAVC, true );
 	camera->SetupTunnelVideo( encode );
+	camera->SetState( Component::StateIdle );
+	encode->SetState( Component::StateIdle );
 
 	camera->SetState( Component::StateExecuting );
 	encode->SetState( Component::StateExecuting );
+	camera->SetCapturing( true );
 
 	std::ofstream file( av[1], std::ofstream::out | std::ofstream::binary );
 
