@@ -12,7 +12,7 @@ int main( int ac, char** av )
 	bcm_host_init();
 	OMX_Init();
 
-	Camera* camera = new Camera( 1280, 720, 0, true, true );
+	Camera* camera = new Camera( 1280, 720, 0, true, 0, true );
 	VideoEncode* encode = new VideoEncode( 2048, VideoEncode::CodingAVC, true );
 	camera->SetupTunnelVideo( encode );
 	camera->SetState( Component::StateIdle );
