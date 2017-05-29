@@ -37,6 +37,12 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 		fprintf( stderr, "Camera %d ready\n", mDeviceNumber );
 	}
 
+	OMX_PARAM_BRCMDISABLEPROPRIETARYTUNNELSTYPE tunnels;
+	OMX_INIT_STRUCTURE( tunnels );
+	tunnels.bUseBuffers = OMX_TRUE;
+	tunnels.nPortIndex = 70;
+	SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
+
 // 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
@@ -129,6 +135,7 @@ int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 	GetParameter( OMX_IndexParamPortDefinition, &def );
 	def.format.video.nFrameWidth  = width;
 	def.format.video.nFrameHeight = height;
+	def.format.video.nSliceHeight = height;
 	def.format.video.xFramerate   = 30 << 16;
 	if ( width < 1920 and height < 1080 ) {
 		def.format.video.xFramerate   = 60 << 16; // default to 60 FPS

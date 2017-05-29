@@ -30,6 +30,7 @@ public:
 	} CodingType;
 
 	VideoDecode( uint32_t fps, const CodingType& coding_type = CodingAVC, bool verbose = false );
+	VideoDecode( uint32_t width, uint32_t height, uint32_t fps, const CodingType& coding_type = CodingAVC, bool verbose = false );
 	~VideoDecode();
 	void setRGB565Mode( bool en );
 

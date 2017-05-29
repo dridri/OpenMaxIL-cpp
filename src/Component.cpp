@@ -308,7 +308,6 @@ OMX_ERRORTYPE Component::AllocateInputBuffer( uint16_t port )
 
 OMX_ERRORTYPE Component::AllocateOutputBuffer( uint16_t port )
 {
-	std::cout << "Component::AllocateOutputBuffer( " << port << " )\n";
 	if ( port == 0 ) {
 		for ( uint32_t i = 40; i <= 350; i++ ) {
 			if ( mOutputPorts.find(i) != mOutputPorts.end() and mOutputPorts[i].type == Video ) {
@@ -317,16 +316,11 @@ OMX_ERRORTYPE Component::AllocateOutputBuffer( uint16_t port )
 			}
 		}
 	}
-	std::cout << "Component::AllocateOutputBuffer() : Allocating on port " << port << "\n";
 	OMX_ERRORTYPE ret = AllocateBuffers( &mOutputPorts[port].buffer, port, true );
-	std::cout << "Component::AllocateOutputBuffer 2\n";
 	mOutputPorts[port].buffer_copy = (OMX_BUFFERHEADERTYPE*)malloc( sizeof( OMX_BUFFERHEADERTYPE ) );
-	std::cout << "Component::AllocateOutputBuffer 3\n";
 	printf( "=> memcpy( %p, %p, %d )\n", mOutputPorts[port].buffer_copy, mOutputPorts[port].buffer, sizeof( OMX_BUFFERHEADERTYPE ) );
 	memcpy( mOutputPorts[port].buffer_copy, mOutputPorts[port].buffer, sizeof( OMX_BUFFERHEADERTYPE ) );
-	std::cout << "Component::AllocateOutputBuffer 4\n";
 	mOutputPorts[port].bEnabled = true;
-	std::cout << "Component::AllocateOutputBuffer 5\n";
 
 	return ret;
 }
@@ -375,22 +369,23 @@ uint32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 	uint32_t datalen = 0;
 	OMX_BUFFERHEADERTYPE* buffer = mOutputPorts[port].buffer;
 
-// 	if ( not mOutputPorts[port].bufferRunning ) {
-// 		mOutputPorts[port].bufferRunning = true;
-		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, buffer );
-		if ( err != OMX_ErrorNone ) {
-			printf( "Component::AllocateOutputBuffer : FillThisBuffer error : 0x%08X\n", (uint32_t)err );
-			return err;
-		}
-// 	}
+	OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, buffer );
+	if ( err != OMX_ErrorNone ) {
+		printf( "Component::getOutputData : FillThisBuffer error : 0x%08X\n", (uint32_t)err );
+		return err;
+	}
 
 	if ( buffer ) {
 		std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 
-		printf( "mOutputPorts[%d].bufferDataAvailable = %d\n", port, mOutputPorts[port].bufferDataAvailable );
+		if ( mVerbose ) {
+			printf( "mOutputPorts[%d].bufferDataAvailable = %d\n", port, mOutputPorts[port].bufferDataAvailable );
+		}
 		if ( not mOutputPorts[port].bufferDataAvailable and wait ) {
-			printf( "Component::getOutputData() : Waiting...\n" );
-// 			mDataAvailableCond.wait( locker );
+			if ( mVerbose ) {
+				printf( "Component::getOutputData() : Waiting...\n" );
+			}
+			mDataAvailableCond.wait( locker );
 		} else if ( not wait ) {
 			locker.unlock();
 			return OMX_ErrorOverflow;
@@ -403,20 +398,10 @@ uint32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 		}
 
 		if ( buffer->nFilledLen > 0 ) {
-			printf( "memcpy( %p, %p, %d )\n", pBuf, buffer->pBuffer, buffer->nFilledLen );
 			memcpy( pBuf, buffer->pBuffer, buffer->nFilledLen );
 		}
 		datalen = buffer->nFilledLen;
 		locker.unlock();
-
-// 		mOutputPorts[port].bufferDataAvailable = false;
-/*
-		printf( "Component::getOutputData() : Resetted bufferDataAvailable\n" );
-		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, buffer );
-		if ( err != OMX_ErrorNone ) {
-			return err;
-		}
-*/
 	}
 
 	return datalen;
@@ -687,6 +672,7 @@ void Component::onexit()
 		if ( dynamic_cast< Camera* >( comp ) != nullptr ) {
 			printf( "Stopping Camera %s\n", comp->mName.c_str() );
 			dynamic_cast< Camera* >( comp )->SetCapturing( false );
+			printf( "Camera stopped\n" );
 		}
 	}
 	usleep( 1000 * 100 );
@@ -773,7 +759,9 @@ OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U
 
 OMX_ERRORTYPE Component::EmptyBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
-	fprintf( stderr, "Component::EmptyBufferDone on %p (%s)%s\n", mHandle, mName.c_str(), ( buf->nFlags & OMX_BUFFERFLAG_ENDOFFRAME ) ? " (eof)" : "" );
+	if ( mVerbose ) {
+		fprintf( stdout, "Component::EmptyBufferDone on %p (%s)%s\n", mHandle, mName.c_str(), ( buf->nFlags & OMX_BUFFERFLAG_ENDOFFRAME ) ? " (eof)" : "" );
+	}
 	for ( auto p : mInputPorts ) {
 		if ( p.second.buffer == buf ) {
 			p.second.bufferNeedsData = true;
@@ -786,16 +774,14 @@ OMX_ERRORTYPE Component::EmptyBufferDone( OMX_BUFFERHEADERTYPE* buf )
 
 OMX_ERRORTYPE Component::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
-	fprintf( stderr, "Component::FillBufferDone on %p[%s] (%p)\n", mHandle, mName.c_str(), buf );
+	if ( mVerbose ) {
+		fprintf( stdout, "Component::FillBufferDone on %p[%s] (%p)\n", mHandle, mName.c_str(), buf );
+	}
 	for ( auto p : mOutputPorts ) {
 		if ( p.second.buffer == buf ) {
-			fprintf( stderr, " ==> port %d\n", p.second.nPort );
-			printf( " ==> locker...\n" );
 			std::unique_lock<std::mutex> locker( mDataAvailableMutex );
-			printf( "Component::FillBufferDone() : Setting bufferDataAvailable\n" );
 			p.second.bufferDataAvailable = true;
 			mDataAvailableCond.notify_all();
-			fprintf( stderr, " ==> ok\n" );
 			break;
 		}
 	}

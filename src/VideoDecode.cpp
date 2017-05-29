@@ -32,19 +32,40 @@ VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verb
 	interpolate_timestamp.bEnabled = OMX_FALSE;
 	SetParameter( OMX_IndexParamBrcmInterpolateMissingTimestamps, &interpolate_timestamp );
 
-	OMX_PARAM_BRCMVIDEODECODEERRORCONCEALMENTTYPE errconceal;
-	OMX_INIT_STRUCTURE( errconceal );
-	errconceal.bStartWithValidFrame = OMX_FALSE;
-	SetParameter( OMX_IndexParamBrcmVideoDecodeErrorConcealment, &errconceal );
+	if ( coding_type == CodingAVC ) {
+		OMX_PARAM_BRCMVIDEODECODEERRORCONCEALMENTTYPE errconceal;
+		OMX_INIT_STRUCTURE( errconceal );
+		errconceal.bStartWithValidFrame = OMX_FALSE;
+		SetParameter( OMX_IndexParamBrcmVideoDecodeErrorConcealment, &errconceal );
 
-	OMX_PARAM_DATAUNITTYPE unit;
-	OMX_INIT_STRUCTURE( unit );
-	unit.nPortIndex = 130;
-	unit.eUnitType = OMX_DataUnitCodedPicture;
-	unit.eEncapsulationType = OMX_DataEncapsulationElementaryStream;
-	SetParameter( OMX_IndexParamBrcmDataUnit, &unit );
+		OMX_PARAM_DATAUNITTYPE unit;
+		OMX_INIT_STRUCTURE( unit );
+		unit.nPortIndex = 130;
+		unit.eUnitType = OMX_DataUnitCodedPicture;
+		unit.eEncapsulationType = OMX_DataEncapsulationElementaryStream;
+		SetParameter( OMX_IndexParamBrcmDataUnit, &unit );
+	}
 
 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
+}
+
+
+
+VideoDecode::VideoDecode( uint32_t width, uint32_t height, uint32_t fps, const CodingType& coding_type, bool verbose )
+	: VideoDecode( fps, coding_type, verbose )
+{
+	OMX_PARAM_PORTDEFINITIONTYPE def;
+	OMX_INIT_STRUCTURE( def );
+	def.nPortIndex = 130;
+	GetParameter( OMX_IndexParamPortDefinition, &def );
+	def.format.video.nFrameWidth = width;
+	def.format.video.nFrameHeight = height;
+	def.format.video.nStride = width;
+	def.format.video.nSliceHeight = height;
+	def.format.video.xFramerate = fps << 16;
+	def.format.video.eCompressionFormat = (OMX_VIDEO_CODINGTYPE)coding_type;
+	def.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
+	SetParameter( OMX_IndexParamPortDefinition, &def );
 }
 
 
