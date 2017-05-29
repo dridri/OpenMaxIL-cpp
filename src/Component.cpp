@@ -337,13 +337,7 @@ void Component::fillInput( uint16_t port, uint8_t* pBuf, uint32_t len, bool corr
 	OMX_BUFFERHEADERTYPE* buffer = mInputPorts[port].buffer;
 
 	if ( buffer ) {
-		// Manually copy buffer, since libcofi_rpi's memcpy causes random segfault (missalign?)
-		uint32_t* start = (uint32_t*)buffer->pBuffer;
-		uint32_t* end = start + ( len >> 2 ) + 1;
-		uint32_t* copy = (uint32_t*)pBuf;
-		while ( start < end ) {
-			*(start++) = *(copy++);
-		}
+		memcpy( buffer->pBuffer, pBuf, len );
 
 		// Send buffer to GPU
 		buffer->nTimeStamp = { 0, 0 };
@@ -397,7 +391,7 @@ uint32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 			fflush( stdout );
 		}
 
-		if ( buffer->nFilledLen > 0 ) {
+		if ( buffer->nFilledLen > 0 and pBuf ) {
 			memcpy( pBuf, buffer->pBuffer, buffer->nFilledLen );
 		}
 		datalen = buffer->nFilledLen;

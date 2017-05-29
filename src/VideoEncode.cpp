@@ -322,12 +322,16 @@ uint32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 
 	if ( mDataAvailable ) {
-		memcpy( pBuf, mBuffer->pBuffer, mBuffer->nFilledLen );
+		if ( pBuf ) {
+			memcpy( pBuf, mBuffer->pBuffer, mBuffer->nFilledLen );
+		}
 		datalen = mBuffer->nFilledLen;
 		mDataAvailable = false;
 	} else if ( wait ) {
 		mDataAvailableCond.wait( locker );
-		memcpy( pBuf, mBuffer->pBuffer, mBuffer->nFilledLen );
+		if ( pBuf ) {
+			memcpy( pBuf, mBuffer->pBuffer, mBuffer->nFilledLen );
+		}
 		datalen = mBuffer->nFilledLen;
 		mDataAvailable = false;
 	} else {

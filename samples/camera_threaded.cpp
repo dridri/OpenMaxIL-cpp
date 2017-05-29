@@ -43,16 +43,29 @@ void process_image( uint8_t* data )
 
 void* preview_thread( void* argp )
 {
-	// Allocate space for image
-	uint8_t* data = new uint8_t[1280*720*sizeof(uint16_t)];
+	bool zero_copy = true;
+	uint8_t* data = nullptr;
+	uint8_t* mjpeg_data = nullptr;
+	if ( not zero_copy ) {
+		// Allocate space for image
+		data = new uint8_t[1280*720*sizeof(uint16_t)];
+		mjpeg_data = new uint8_t[80000];
+	}
 
 	// ATTENTION : Each loop must take less time than it takes to the camera to take one frame
 	// otherwise it will cause underflow which can lead to camera stalling
 	// a good solution is to implement frame skipping (measure time between to loops, if this time
 	// is too big, just skip image processing and MJPEG sendout)
 	while ( state.running ) {
+		if ( zero_copy ) {
+			// Retrieve OMX buffer
+			data = state.camera->outputPorts()[70].buffer->pBuffer;
+			mjpeg_data = state.preview_encode->outputPorts()[201].buffer->pBuffer;
+		}
 		// Get YUV420 image from preview port, this is a blocking call
-		int32_t datalen = state.camera->getOutputData( 70, data );
+		// If zero-copy is activated, we don't pass any buffer
+		int32_t datalen = state.camera->getOutputData( 70, zero_copy ? nullptr : data );
+
 		if ( datalen > 0 ) {
 			// Send it to the MJPEG encoder
 			state.preview_encode->fillInput( 200, data, datalen, false, true );
@@ -60,7 +73,7 @@ void* preview_thread( void* argp )
 			process_image( data );
 		}
 
-		while ( ( datalen = state.preview_encode->getOutputData( data, false ) ) > 0 ) {
+		while ( ( datalen = state.preview_encode->getOutputData( zero_copy ? nullptr : mjpeg_data, false ) ) > 0 ) {
 			// TODO : send MJPEG data to a client, 'data' contains exactly one coded frame which is 'datalen' long
 		}
 	}
@@ -102,7 +115,7 @@ int main( int ac, char** av )
 
 	// Create components
 	state.camera = new Camera( 1280, 720, 0, false, 0, false );
-	state.preview_encode = new VideoEncode( 4096, VideoEncode::CodingMJPEG, false, false );
+	state.preview_encode = new VideoEncode( 8192, VideoEncode::CodingMJPEG, false, false );
 	state.record_encode = new VideoEncode( 4096, VideoEncode::CodingAVC, false, false );
 
 	// Setup camera
