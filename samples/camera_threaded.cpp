@@ -59,7 +59,7 @@ void* preview_thread( void* argp )
 	if ( not zero_copy ) {
 		// Allocate space for image
 		data = new uint8_t[1280*720*sizeof(uint16_t)];
-		mjpeg_data = new uint8_t[(int)(1280*720*1.5)];
+		mjpeg_data = new uint8_t[80000];
 	}
 
 	// ATTENTION : Each loop must take less time than it takes to the camera to take one frame
@@ -97,7 +97,7 @@ void* preview_thread( void* argp )
 
 void* record_thread( void* argp )
 {
-	uint8_t* data = new uint8_t[65536*4];
+	uint8_t* data = new uint8_t[65536];
 
 	while ( state.running ) {
 		// Consume h264 data, this is a blocking call
