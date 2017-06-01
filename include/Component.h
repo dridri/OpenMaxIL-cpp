@@ -67,7 +67,7 @@ public:
 	void fillInput( uint16_t port, uint8_t* pBuf, uint32_t len, bool corrupted = false, bool eof = false );
 
 	const bool dataAvailable( uint16_t port );
-	uint32_t getOutputData( uint16_t port, uint8_t* pBuf, bool wait = true );
+	int32_t getOutputData( uint16_t port, uint8_t* pBuf, bool wait = true );
 
 	std::map< uint16_t, Port >& inputPorts() { return mInputPorts; }
 	std::map< uint16_t, Port >& outputPorts() { return mOutputPorts; }

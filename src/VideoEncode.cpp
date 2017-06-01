@@ -315,7 +315,7 @@ void VideoEncode::fillBuffer()
 }
 
 
-uint32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
+int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 {
 	uint32_t datalen = 0;
 

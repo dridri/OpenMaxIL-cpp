@@ -274,7 +274,7 @@ const bool VideoDecode::dataAvailable() const
 }
 
 
-uint32_t VideoDecode::getOutputData( uint8_t* pBuf, bool wait )
+int32_t VideoDecode::getOutputData( uint8_t* pBuf, bool wait )
 {
 	if ( mOutputPorts[131].bTunneled == false and mOutputBuffer == nullptr ) {
 		AllocateBuffers( &mOutputBuffer, 131, true );

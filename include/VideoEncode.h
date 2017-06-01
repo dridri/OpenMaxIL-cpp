@@ -41,7 +41,7 @@ public:
 
 	const bool dataAvailable( bool wait = false );
 	void fillBuffer();
-	uint32_t getOutputData( uint8_t* pBuf, bool wait = true );
+	int32_t getOutputData( uint8_t* pBuf, bool wait = true );
 	const std::map< uint32_t, uint8_t* >& headers() const;
 	OMX_U8* buffer() const;
 	OMX_U32 bufferLength() const;

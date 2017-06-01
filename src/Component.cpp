@@ -11,6 +11,8 @@
 #include <IL/OMX_Broadcom.h>
 #include <iostream>
 #include "Camera.h"
+#include "VideoEncode.h"
+#include "VideoDecode.h"
 
 
 static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def );
@@ -358,7 +360,7 @@ const bool Component::dataAvailable( uint16_t port )
 }
 
 
-uint32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
+int32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 {
 	uint32_t datalen = 0;
 	OMX_BUFFERHEADERTYPE* buffer = mOutputPorts[port].buffer;
@@ -630,10 +632,15 @@ OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int por
 		printf( "   portdef.nBufferCountActual : %d\n   portdef.nBufferSize : %d\n", portdef.nBufferCountActual, portdef.nBufferSize );
 	}
 
+	uint32_t size = portdef.nBufferSize;
+	if ( dynamic_cast<VideoEncode*>(this) != nullptr or dynamic_cast<VideoDecode*>(this) != nullptr ) {
+		size *= 2; // Buffer can be too small in low-light=>high luminosity transition
+	}
+
 	for ( i = 0; i < portdef.nBufferCountActual; i++ ) {
 		OMX_U8* buf;
 
-		buf = (OMX_U8*)vcos_malloc_aligned( portdef.nBufferSize, portdef.nBufferAlignment, "buffer" );
+		buf = (OMX_U8*)vcos_malloc_aligned( size, portdef.nBufferAlignment, "buffer" );
 		if ( buf ) {
 			mAllocatedBuffers.emplace_back( buf );
 			mAllAllocatedBuffers.emplace_back( buf );
@@ -641,9 +648,9 @@ OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int por
 			return OMX_ErrorInsufficientResources;
 		}
 		if ( mVerbose ) {
-			printf( "Allocated a buffer of %d bytes\n", portdef.nBufferSize );
+			printf( "Allocated a buffer of %d bytes\n", size );
 		}
-		ret = OMX_UseBuffer( mHandle, end, port, nullptr, portdef.nBufferSize, buf );
+		ret = OMX_UseBuffer( mHandle, end, port, nullptr, size, buf );
 		if ( ret != OMX_ErrorNone ) {
 			printf( "OMX_UseBuffer error 0x%08X ! (state : %d)\n", ret, (int)state() );
 			*buffer = list;

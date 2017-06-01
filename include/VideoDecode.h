@@ -45,7 +45,7 @@ public:
 	void fillInput( uint8_t* pBuf, uint32_t len, bool corrupted = false );
 
 	const bool dataAvailable() const;
-	uint32_t getOutputData( uint8_t* pBuf, bool wait = true );
+	int32_t getOutputData( uint8_t* pBuf, bool wait = true );
 
 protected:
 	virtual OMX_ERRORTYPE EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );

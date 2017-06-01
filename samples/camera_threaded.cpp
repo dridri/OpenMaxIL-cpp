@@ -43,13 +43,23 @@ void process_image( uint8_t* data )
 
 void* preview_thread( void* argp )
 {
-	bool zero_copy = true;
+#if 0
+	VideoDecode* decode = new VideoDecode( 1280, 720, 0, VideoDecode::CodingMJPEG, true );
+	VideoRender* render = new VideoRender( true );
+	decode->SetupTunnel( render );
+	decode->SetState( Component::StateIdle );
+	render->SetState( Component::StateIdle );
+	decode->SetState( Component::StateExecuting );
+	render->SetState( Component::StateExecuting );
+#endif
+
+	bool zero_copy = false;
 	uint8_t* data = nullptr;
 	uint8_t* mjpeg_data = nullptr;
 	if ( not zero_copy ) {
 		// Allocate space for image
 		data = new uint8_t[1280*720*sizeof(uint16_t)];
-		mjpeg_data = new uint8_t[80000];
+		mjpeg_data = new uint8_t[(int)(1280*720*1.5)];
 	}
 
 	// ATTENTION : Each loop must take less time than it takes to the camera to take one frame
@@ -75,6 +85,9 @@ void* preview_thread( void* argp )
 
 		while ( ( datalen = state.preview_encode->getOutputData( zero_copy ? nullptr : mjpeg_data, false ) ) > 0 ) {
 			// TODO : send MJPEG data to a client, 'data' contains exactly one coded frame which is 'datalen' long
+#if 0
+			decode->fillInput( mjpeg_data, datalen );
+#endif
 		}
 	}
 
@@ -84,7 +97,7 @@ void* preview_thread( void* argp )
 
 void* record_thread( void* argp )
 {
-	uint8_t* data = new uint8_t[65536];
+	uint8_t* data = new uint8_t[65536*4];
 
 	while ( state.running ) {
 		// Consume h264 data, this is a blocking call
@@ -126,7 +139,6 @@ int main( int ac, char** av )
 
 	// Tunnel video port to AVC encoder
 	state.camera->SetupTunnelVideo( state.record_encode );
-
 
 	// Prepare components for next step
 	state.camera->SetState( Component::StateIdle );
