@@ -53,7 +53,7 @@ void* preview_thread( void* argp )
 	render->SetState( Component::StateExecuting );
 #endif
 
-	bool zero_copy = false;
+	bool zero_copy = true;
 	uint8_t* data = nullptr;
 	uint8_t* mjpeg_data = nullptr;
 	if ( not zero_copy ) {
