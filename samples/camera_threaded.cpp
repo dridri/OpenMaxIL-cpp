@@ -64,7 +64,7 @@ void* preview_thread( void* argp )
 
 	// ATTENTION : Each loop must take less time than it takes to the camera to take one frame
 	// otherwise it will cause underflow which can lead to camera stalling
-	// a good solution is to implement frame skipping (measure time between to loops, if this time
+	// a good solution is to implement frame skipping (measure time between two loops, if this time
 	// is too big, just skip image processing and MJPEG sendout)
 	while ( state.running ) {
 		if ( zero_copy ) {

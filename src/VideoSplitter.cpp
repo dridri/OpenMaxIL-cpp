@@ -6,7 +6,6 @@
 
 using namespace IL;
 
-
 VideoSplitter::VideoSplitter( bool verbose )
 	: Component( "OMX.broadcom.video_splitter", { PortInit( 250, Video ) }, { PortInit( 251, Video ), PortInit( 252, Video ), PortInit( 253, Video ), PortInit( 254, Video ) }, verbose )
 {

@@ -2,6 +2,7 @@
 #include "Camera.h"
 #include <bcm_host.h>
 #include <interface/vcsm/user-vcsm.h>
+#include <IL/OMX_Index.h>
 #include <IL/OMX_Video.h>
 #include <IL/OMX_Types.h>
 #include <IL/OMX_Component.h>
@@ -692,4 +693,20 @@ OMX_ERRORTYPE Camera::setMirror( bool hrzn, bool vert )
 
 	mirror.nPortIndex = 71;
 	return SetConfig( OMX_IndexConfigCommonMirror, &mirror );
+}
+
+
+OMX_ERRORTYPE Camera::setRotation( int32_t angle_degrees )
+{
+	OMX_CONFIG_ROTATIONTYPE rot;
+	OMX_INIT_STRUCTURE(rot);
+	rot.nPortIndex = 70;
+	rot.nRotation = angle_degrees;
+	OMX_ERRORTYPE err = SetConfig( OMX_IndexConfigCommonRotate, &rot );
+	if ( err != OMX_ErrorNone ) {
+		return err;
+	}
+
+	rot.nPortIndex = 71;
+	return SetConfig( OMX_IndexConfigCommonRotate, &rot );
 }

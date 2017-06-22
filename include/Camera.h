@@ -94,6 +94,7 @@ public:
 	OMX_ERRORTYPE setExposureValue( uint16_t exposure_compensation, float aperture, uint32_t iso_sensitivity, uint32_t shutter_speed_us );
 	OMX_ERRORTYPE setFrameStabilisation( bool enabled );
 	OMX_ERRORTYPE setMirror( bool hrzn, bool vert );
+	OMX_ERRORTYPE setRotation( int32_t angle_degrees );
 
 	OMX_ERRORTYPE disableLensShading();
 	OMX_ERRORTYPE setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid_width, uint32_t grid_height, const uint8_t* ls_grid );
