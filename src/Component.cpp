@@ -634,7 +634,7 @@ OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int por
 
 	uint32_t size = portdef.nBufferSize;
 	if ( dynamic_cast<VideoEncode*>(this) != nullptr or dynamic_cast<VideoDecode*>(this) != nullptr ) {
-		size *= 2; // Buffer can be too small in low-light=>high luminosity transition
+		size *= 4; // Buffer can be too small in low-light=>high luminosity transition
 	}
 
 	for ( i = 0; i < portdef.nBufferCountActual; i++ ) {
