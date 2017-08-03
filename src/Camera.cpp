@@ -50,7 +50,9 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 
 Camera::~Camera()
 {
-	printf( "Deleting Camera...\n" );
+	if ( mVerbose ) {
+		fprintf( stderr, "Deleting Camera...\n" );
+	}
 	SetCapturing( false );
 
 	if ( mLensShadingAlloc != 0 ) {
@@ -64,7 +66,9 @@ Camera::~Camera()
 		vcsm_free( mLensShadingAlloc );
 	}
 
-	printf( "Deleting Camera ok\n" );
+	if ( mVerbose ) {
+		fprintf( stderr, "Deleting Camera ok\n" );
+	}
 }
 
 

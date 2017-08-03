@@ -320,7 +320,6 @@ OMX_ERRORTYPE Component::AllocateOutputBuffer( uint16_t port )
 	}
 	OMX_ERRORTYPE ret = AllocateBuffers( &mOutputPorts[port].buffer, port, true );
 	mOutputPorts[port].buffer_copy = (OMX_BUFFERHEADERTYPE*)malloc( sizeof( OMX_BUFFERHEADERTYPE ) );
-	printf( "=> memcpy( %p, %p, %d )\n", mOutputPorts[port].buffer_copy, mOutputPorts[port].buffer, sizeof( OMX_BUFFERHEADERTYPE ) );
 	memcpy( mOutputPorts[port].buffer_copy, mOutputPorts[port].buffer, sizeof( OMX_BUFFERHEADERTYPE ) );
 	mOutputPorts[port].bEnabled = true;
 
@@ -365,13 +364,19 @@ int32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 	uint32_t datalen = 0;
 	OMX_BUFFERHEADERTYPE* buffer = mOutputPorts[port].buffer;
 
+	if ( mVerbose ) {
+		printf( "[%s] Component::getOutputData() : mHandle->FillThisBuffer()\n", mName.c_str() );
+	}
 	OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, buffer );
 	if ( err != OMX_ErrorNone ) {
-		printf( "Component::getOutputData : FillThisBuffer error : 0x%08X\n", (uint32_t)err );
+		printf( "[%s] Component::getOutputData : FillThisBuffer error : 0x%08X\n", mName.c_str(), (uint32_t)err );
 		return err;
 	}
 
 	if ( buffer ) {
+		if ( mVerbose ) {
+			printf( "[%s] Component::getOutputData() locking...\n", mName.c_str() );
+		}
 		std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 
 		if ( mVerbose ) {
@@ -379,11 +384,14 @@ int32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 		}
 		if ( not mOutputPorts[port].bufferDataAvailable and wait ) {
 			if ( mVerbose ) {
-				printf( "Component::getOutputData() : Waiting...\n" );
+				printf( "[%s] Component::getOutputData() : Waiting...\n", mName.c_str() );
 			}
 			mDataAvailableCond.wait( locker );
 		} else if ( not wait ) {
 			locker.unlock();
+			if ( mVerbose ) {
+				printf( "[%s] Component::getOutputData() unlocked\n", mName.c_str() );
+			}
 			return OMX_ErrorOverflow;
 		}
 
@@ -398,6 +406,9 @@ int32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 		}
 		datalen = buffer->nFilledLen;
 		locker.unlock();
+		if ( mVerbose ) {
+			printf( "[%s] Component::getOutputData() unlocked\n", mName.c_str() );
+		}
 	}
 
 	return datalen;
