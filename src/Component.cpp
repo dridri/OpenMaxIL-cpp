@@ -791,9 +791,15 @@ OMX_ERRORTYPE Component::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 	}
 	for ( auto p : mOutputPorts ) {
 		if ( p.second.buffer == buf ) {
+			if ( mVerbose ) {
+				fprintf( stdout, "[%s] Component::FillBufferDone locking...\n", mName.c_str() );
+			}
 			std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 			p.second.bufferDataAvailable = true;
 			mDataAvailableCond.notify_all();
+			if ( mVerbose ) {
+				fprintf( stdout, "[%s] Component::FillBufferDone unlocked\n", mName.c_str() );
+			}
 			break;
 		}
 	}

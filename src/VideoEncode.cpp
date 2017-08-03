@@ -292,6 +292,9 @@ const std::map< uint32_t, uint8_t* >& VideoEncode::headers() const
 
 OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
+	if ( mVerbose ) {
+		printf( "VideoEncode::FillBufferDone() locking...\n" );
+	}
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 	if ( mBuffer->nFilledLen > 0 and mBuffer->nFilledLen < 32 and mHeaders.find( mBuffer->nFilledLen ) == mHeaders.end() ) {
 		uint8_t* data = (uint8_t*)malloc( mBuffer->nFilledLen );
@@ -300,6 +303,9 @@ OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 	}
 	mDataAvailable = true;
 	mDataAvailableCond.notify_all();
+	if ( mVerbose ) {
+		printf( "VideoEncode::FillBufferDone() unlocked\n" );
+	}
 	return OMX_ErrorNone;
 }
 
