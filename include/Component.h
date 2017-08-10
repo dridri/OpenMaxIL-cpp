@@ -9,6 +9,7 @@
 #include <map>
 #include <mutex>
 #include <condition_variable>
+#include <functional>
 
 extern "C" void bcm_host_init( void );
 
@@ -73,6 +74,8 @@ public:
 	std::map< uint16_t, Port >& outputPorts() { return mOutputPorts; }
 
 	static OMX_ERRORTYPE CopyPort( Port* from, Port* to );
+	static void setDebugOutputCallback( std::function<void( int level, const std::string& str )> callback );
+	static void DestroyAll();
 
 protected:
 	class PortInit {
@@ -118,7 +121,8 @@ protected:
 	std::condition_variable mDataAvailableCond;
 
 	static uint64_t ticks64();
-	static void DestroyAll();
+
+	std::function<void( int level, const std::string& str )> mDebugCallback;
 
 private:
 	static OMX_ERRORTYPE genericeventhandler( OMX_HANDLETYPE handle, Component* component, OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );
