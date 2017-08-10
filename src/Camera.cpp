@@ -35,7 +35,7 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 		usleep( 100 * 1000 );
 	}
 	if ( mVerbose ) {
-		fprintf( stderr, "Camera %d ready\n", mDeviceNumber );
+		mDebugCallback( 0, "Camera %d ready\n", mDeviceNumber );
 	}
 
 	OMX_PARAM_BRCMDISABLEPROPRIETARYTUNNELSTYPE tunnels;
@@ -51,7 +51,7 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 Camera::~Camera()
 {
 	if ( mVerbose ) {
-		fprintf( stderr, "Deleting Camera...\n" );
+		mDebugCallback( 0, "Deleting Camera...\n" );
 	}
 	SetCapturing( false );
 
@@ -61,13 +61,13 @@ Camera::~Camera()
 		lens_override.bEnabled = OMX_FALSE;
 		OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
 		if ( ret != OMX_ErrorNone ) {
-			fprintf( stderr, "Cannot disable lens shading override : 0x%08X\n", ret ); fflush(stderr);
+			mDebugCallback( 0, "Cannot disable lens shading override : 0x%08X\n", ret ); fflush(stderr);
 		}
 		vcsm_free( mLensShadingAlloc );
 	}
 
 	if ( mVerbose ) {
-		fprintf( stderr, "Deleting Camera ok\n" );
+		mDebugCallback( 0, "Deleting Camera ok\n" );
 	}
 }
 
@@ -296,11 +296,9 @@ int Camera::HighSpeedMode( uint32_t sensor_mode )
 	OMX_PRIORITYMGMTTYPE prio;
 	OMX_INIT_STRUCTURE( prio );
 	GetParameter( OMX_IndexParamPriorityMgmt, &prio );
-	printf( "PRIORITY : %d, %d\n", prio.nGroupPriority, prio.nGroupID );
 	prio.nGroupPriority = 99;
 	SetParameter( OMX_IndexParamPriorityMgmt, &prio );
 	GetParameter( OMX_IndexParamPriorityMgmt, &prio );
-	printf( "PRIORITY : %d, %d\n", prio.nGroupPriority, prio.nGroupID );
 
 	setFrameStabilisation( false );
 
@@ -461,7 +459,7 @@ OMX_ERRORTYPE Camera::disableLensShading()
 
 	OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmIspBlockOverride, &isp_override );
 	if ( ret != OMX_ErrorNone ) {
-		fprintf( stderr, "Cannot disable lens shading : 0x%08X\n", ret ); fflush(stderr);
+		mDebugCallback( 0, "Cannot disable lens shading : 0x%08X\n", ret ); fflush(stderr);
 	}
 
 	return ret;
@@ -477,7 +475,7 @@ OMX_ERRORTYPE Camera::setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid
 		lens_override.bEnabled = OMX_FALSE;
 		OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
 		if ( ret != OMX_ErrorNone ) {
-			fprintf( stderr, "Cannot disable lens shading override : 0x%08X\n", ret ); fflush(stderr);
+			mDebugCallback( 0, "Cannot disable lens shading override : 0x%08X\n", ret ); fflush(stderr);
 			return ret;
 		}
 		vcsm_free( mLensShadingAlloc );
@@ -496,17 +494,17 @@ OMX_ERRORTYPE Camera::setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid
 	lens_override.nRefTransform = 3;
 
 	mLensShadingAlloc = vcsm_malloc( lens_override.nStride * lens_override.nHeight * 4, (char*)"ls_grid" );
-	printf( "mLensShadingAlloc : %d (%d)\n", mLensShadingAlloc, lens_override.nStride * lens_override.nHeight * 4 );
+	mDebugCallback( 1, "mLensShadingAlloc : %d (%d)\n", mLensShadingAlloc, lens_override.nStride * lens_override.nHeight * 4 );
 	lens_override.nMemHandleTable = vcsm_vc_hdl_from_hdl( mLensShadingAlloc );
-	printf( "lens_override.nMemHandleTable : %d\n", lens_override.nMemHandleTable );
+	mDebugCallback( 1, "lens_override.nMemHandleTable : %d\n", lens_override.nMemHandleTable );
 	void* grid = vcsm_lock( mLensShadingAlloc );
-	printf( "grid : %p\n", grid );
+	mDebugCallback( 1, "grid : %p\n", grid );
 	memcpy( grid, ls_grid, lens_override.nStride * lens_override.nHeight * 4 );
 	vcsm_unlock_hdl( mLensShadingAlloc );
 
 	OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
 	if ( ret != OMX_ErrorNone ) {
-		fprintf( stderr, "Cannot disable lens shading : 0x%08X\n", ret ); fflush(stderr);
+		mDebugCallback( 0, "Cannot disable lens shading : 0x%08X\n", ret ); fflush(stderr);
 	}
 
 	return ret;

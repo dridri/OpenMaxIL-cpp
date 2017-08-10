@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include "Component.h"
 #include <unistd.h>
 #include <stdio.h>
@@ -7,21 +8,18 @@
 #include <bcm_host.h>
 #include <IL/OMX_Video.h>
 #include <IL/OMX_Types.h>
-#include <IL/OMX_Component.h>
 #include <IL/OMX_Broadcom.h>
 #include <iostream>
 #include "Camera.h"
 #include "VideoEncode.h"
 #include "VideoDecode.h"
 
-
-static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def );
-
 using namespace IL;
 
 bool Component::mCoreReady = false;
 std::list< OMX_U8* > Component::mAllAllocatedBuffers;
 std::list< Component* > Component::mComponents;
+void (*Component::mDebugCallback)( int level, const std::string& fmt, ... ) = nullptr;
 
 OMX_ERRORTYPE Component::genericeventhandler( OMX_HANDLETYPE handle, Component* component, OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata )
 {
@@ -47,6 +45,10 @@ Component::Component( const std::string& name, const std::vector< PortInit >& in
 	, mState( StateInvalid )
 	, mHandle( nullptr )
 {
+	if ( mDebugCallback == nullptr ) {
+		mDebugCallback = &Component::DefaultDebugCallback;
+	}
+
 	if ( not mCoreReady ) {
 		mCoreReady = true;
 		atexit( &Component::DestroyAll );
@@ -67,7 +69,7 @@ Component::Component( const std::string& name, const std::vector< PortInit >& in
 		p.bufferNeedsData = false;
 		p.bufferDataAvailable = false;
 		if ( mVerbose ) {
-			printf( "Adding input port { %d, %d }\n", p.nPort, p.type );
+			mDebugCallback( 1, "Adding input port { %d, %d }\n", p.nPort, p.type );
 		}
 		mInputPorts.insert( std::make_pair( n.id, p ) );
 	}
@@ -83,7 +85,7 @@ Component::Component( const std::string& name, const std::vector< PortInit >& in
 		p.bufferNeedsData = false;
 		p.bufferDataAvailable = false;
 		if ( mVerbose ) {
-			printf( "Adding output port { %d, %d }\n", p.nPort, p.type );
+			mDebugCallback( 1, "Adding output port { %d, %d }\n", p.nPort, p.type );
 		}
 		mOutputPorts.insert( std::make_pair( n.id, p ) );
 	}
@@ -104,10 +106,29 @@ Component::~Component()
 				break;
 			}
 		}
-		printf( "Freeing buffer %p\n", buf );
+		mDebugCallback( 1, "Freeing buffer %p\n", buf );
 		vcos_free( buf );
 	}
 	OMX_FreeHandle( mHandle );
+}
+
+
+void Component::setDebugOutputCallback( void (*callback)( int level, const std::string& fmt, ... ) )
+{
+	mDebugCallback = callback;
+}
+
+
+void Component::DefaultDebugCallback( int level, const std::string& fmt, ... )
+{
+	va_list opt;
+	va_start( opt, fmt.c_str() );
+
+	if ( level == 0 ) {
+		vfprintf( stderr, fmt.c_str(), opt );
+	} else {
+		vfprintf( stdout, fmt.c_str(), opt );
+	}
 }
 
 
@@ -129,7 +150,7 @@ OMX_ERRORTYPE Component::SetState( const State& st_, bool wait )
 				if ( p.bTunneled and not p.bEnabled ) {
 					OMX_ERRORTYPE err = SendCommand( OMX_CommandPortEnable, p.nPort, nullptr );
 					if ( err != OMX_ErrorNone ) {
-						printf( "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
+						mDebugCallback( 0, "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
 						return err;
 					}
 					if ( wait ) {
@@ -152,7 +173,7 @@ OMX_ERRORTYPE Component::SetState( const State& st_, bool wait )
 				if ( p.bTunneled and not p.bEnabled ) {
 					OMX_ERRORTYPE err = SendCommand( OMX_CommandPortEnable, p.nPort, nullptr );
 					if ( err != OMX_ErrorNone ) {
-						printf( "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
+						mDebugCallback( 0, "[%s]SendCommand( OMX_CommandPortEnable, %d ) failed\n", mName.c_str(), p.nPort );
 						return err;
 					}
 					if ( wait ) {
@@ -193,17 +214,17 @@ OMX_ERRORTYPE Component::SetState( const State& st_, bool wait )
 
 	OMX_ERRORTYPE err = SendCommand( OMX_CommandStateSet, st, nullptr );
 	if ( err != OMX_ErrorNone ) {
-		printf( "[%s]SendCommand( OMX_CommandStateSet, %d ) failed\n", mName.c_str(), st );
+		mDebugCallback( 0, "[%s]SendCommand( OMX_CommandStateSet, %d ) failed\n", mName.c_str(), st );
 		return err;
 	}
 
 	if ( wait ) {
-		printf( "[%s]Wating state to be %d\n", mName.c_str(), st );
+		mDebugCallback( 1, "[%s]Wating state to be %d\n", mName.c_str(), st );
 		OMX_ERRORTYPE r;
 		OMX_STATETYPE st_wait = OMX_StateInvalid;
 		do {
 			if ( ( r = OMX_GetState( mHandle, &st_wait ) ) != OMX_ErrorNone ) {
-				printf( "[%s]omx_block_until_state_changed: Failed to get component state : %d", mName.c_str(), r );
+				mDebugCallback( 0, "[%s]omx_block_until_state_changed: Failed to get component state : %d", mName.c_str(), r );
 				return r;
 			}
 			if ( st_wait != st ) {
@@ -260,10 +281,10 @@ int Component::InitComponent()
 	};
 	OMX_ERRORTYPE err = OMX_GetHandle( &mHandle, (char*)mName.c_str(), this, &cb );
 	if ( err != OMX_ErrorNone ) {
-		fprintf( stderr, "OMX_GetHandle(%s) failed : %X\n", mName.c_str(), err );
+		mDebugCallback( 0, "OMX_GetHandle(%s) failed : %X\n", mName.c_str(), err );
 		return -1;
 	} else if ( mVerbose ) {
-		fprintf( stderr, "OMX_GetHandle(%s) completed\n", mName.c_str() );
+		mDebugCallback( 1, "OMX_GetHandle(%s) completed\n", mName.c_str() );
 	}
 
 	for ( auto port : mInputPorts ) {
@@ -346,7 +367,7 @@ void Component::fillInput( uint16_t port, uint8_t* pBuf, uint32_t len, bool corr
 		buffer->nFlags = ( eof ? OMX_BUFFERFLAG_ENDOFFRAME : 0 ) | ( corrupted ? OMX_BUFFERFLAG_DATACORRUPT : 0 ) | OMX_BUFFERFLAG_TIME_UNKNOWN;
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, buffer );
 		if ( err != OMX_ErrorNone ) {
-			printf( "Component::fillInput : EmptyThisBuffer error : 0x%08X (bufSize : %d ; corrupted : %d)\n", (uint32_t)err, len, corrupted );
+			mDebugCallback( 0, "Component::fillInput : EmptyThisBuffer error : 0x%08X (bufSize : %d ; corrupted : %d)\n", (uint32_t)err, len, corrupted );
 			fflush( stdout );
 		}
 	}
@@ -365,38 +386,38 @@ int32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 	OMX_BUFFERHEADERTYPE* buffer = mOutputPorts[port].buffer;
 
 	if ( mVerbose ) {
-		printf( "[%s] Component::getOutputData() : mHandle->FillThisBuffer()\n", mName.c_str() );
+		mDebugCallback( 1, "[%s] Component::getOutputData() : mHandle->FillThisBuffer()\n", mName.c_str() );
 	}
 	OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, buffer );
 	if ( err != OMX_ErrorNone ) {
-		printf( "[%s] Component::getOutputData : FillThisBuffer error : 0x%08X\n", mName.c_str(), (uint32_t)err );
+		mDebugCallback( 0, "[%s] Component::getOutputData : FillThisBuffer error : 0x%08X\n", mName.c_str(), (uint32_t)err );
 		return err;
 	}
 
 	if ( buffer ) {
 		if ( mVerbose ) {
-			printf( "[%s] Component::getOutputData() locking...\n", mName.c_str() );
+			mDebugCallback( 1, "[%s] Component::getOutputData() locking...\n", mName.c_str() );
 		}
 		std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 
 		if ( mVerbose ) {
-			printf( "mOutputPorts[%d].bufferDataAvailable = %d\n", port, mOutputPorts[port].bufferDataAvailable );
+			mDebugCallback( 1, "mOutputPorts[%d].bufferDataAvailable = %d\n", port, mOutputPorts[port].bufferDataAvailable );
 		}
 		if ( not mOutputPorts[port].bufferDataAvailable and wait ) {
 			if ( mVerbose ) {
-				printf( "[%s] Component::getOutputData() : Waiting...\n", mName.c_str() );
+				mDebugCallback( 1, "[%s] Component::getOutputData() : Waiting...\n", mName.c_str() );
 			}
 			mDataAvailableCond.wait( locker );
 		} else if ( not wait ) {
 			locker.unlock();
 			if ( mVerbose ) {
-				printf( "[%s] Component::getOutputData() unlocked\n", mName.c_str() );
+				mDebugCallback( 1, "[%s] Component::getOutputData() unlocked\n", mName.c_str() );
 			}
 			return OMX_ErrorOverflow;
 		}
 
 		if ( buffer->pBuffer != mOutputPorts[port].buffer_copy->pBuffer ) {
-			printf( "LEAK : %p != %p\n", buffer->pBuffer, mOutputPorts[port].buffer_copy->pBuffer );
+			mDebugCallback( 0, "LEAK : %p != %p\n", buffer->pBuffer, mOutputPorts[port].buffer_copy->pBuffer );
 			memcpy( buffer, mOutputPorts[port].buffer_copy, sizeof(OMX_BUFFERHEADERTYPE) );
 			fflush( stdout );
 		}
@@ -407,7 +428,7 @@ int32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 		datalen = buffer->nFilledLen;
 		locker.unlock();
 		if ( mVerbose ) {
-			printf( "[%s] Component::getOutputData() unlocked\n", mName.c_str() );
+			mDebugCallback( 1, "[%s] Component::getOutputData() unlocked\n", mName.c_str() );
 		}
 	}
 
@@ -424,9 +445,9 @@ OMX_ERRORTYPE Component::SendCommand( OMX_COMMANDTYPE Cmd, OMX_U32 nParam1, OMX_
 	OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->SendCommand( mHandle, Cmd, nParam1, pCmdData );
 
 	if ( err != OMX_ErrorNone ) {
-		fprintf( stderr, "[%s] SendCommand %X failed : %X\n", mName.c_str(), Cmd, err );
+		mDebugCallback( 0, "[%s] SendCommand %X failed : %X\n", mName.c_str(), Cmd, err );
 	} else if ( mVerbose ) {
-		fprintf( stderr, "[%s] SendCommand %X completed\n", mName.c_str(), Cmd );
+		mDebugCallback( 1, "[%s] SendCommand %X completed\n", mName.c_str(), Cmd );
 	}
 
 	return err;
@@ -448,9 +469,9 @@ OMX_ERRORTYPE Component::GetParameter( OMX_INDEXTYPE nParamIndex, OMX_PTR pCompo
 	OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->GetParameter( mHandle, nParamIndex, pComponentParameterStructure );
 
 	if ( err != OMX_ErrorNone ) {
-		fprintf( stderr, "[%s] GetParameter %s failed : %X\n", mName.c_str(), name, err );
+		mDebugCallback( 0, "[%s] GetParameter %s failed : %X\n", mName.c_str(), name, err );
 	} else if ( mVerbose and nParamIndex != OMX_IndexParamPortDefinition ) {
-		fprintf( stderr, "[%s] GetParameter %s completed\n", mName.c_str(), name );
+		mDebugCallback( 1, "[%s] GetParameter %s completed\n", mName.c_str(), name );
 	}
 
 	return err;
@@ -472,9 +493,9 @@ OMX_ERRORTYPE Component::SetParameter( OMX_INDEXTYPE nIndex, OMX_PTR pComponentP
 	OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->SetParameter( mHandle, nIndex, pComponentParameterStructure );
 
 	if ( err != OMX_ErrorNone ) {
-		fprintf( stderr, "[%s] SetParameter %s failed : %X\n", mName.c_str(), name, err );
+		mDebugCallback( 0, "[%s] SetParameter %s failed : %X\n", mName.c_str(), name, err );
 	} else if ( mVerbose and nIndex != OMX_IndexParamPortDefinition ) {
-		fprintf( stderr, "[%s] SetParameter %s completed\n", mName.c_str(), name );
+		mDebugCallback( 1, "[%s] SetParameter %s completed\n", mName.c_str(), name );
 	}
 
 	return err;
@@ -490,9 +511,9 @@ OMX_ERRORTYPE Component::GetConfig( OMX_INDEXTYPE nIndex, OMX_PTR pComponentConf
 	OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->GetConfig( mHandle, nIndex, pComponentConfigStructure );
 
 	if ( err != OMX_ErrorNone ) {
-		fprintf( stderr, "[%s] GetConfig %X failed : %X\n", mName.c_str(), nIndex, err );
+		mDebugCallback( 0, "[%s] GetConfig %X failed : %X\n", mName.c_str(), nIndex, err );
 	} else if ( mVerbose ) {
-		fprintf( stderr, "[%s] GetConfig %X completed\n", mName.c_str(), nIndex );
+		mDebugCallback( 1, "[%s] GetConfig %X completed\n", mName.c_str(), nIndex );
 	}
 
 	return err;
@@ -508,9 +529,9 @@ OMX_ERRORTYPE Component::SetConfig( OMX_INDEXTYPE nIndex, OMX_PTR pComponentConf
 	OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->SetConfig( mHandle, nIndex, pComponentConfigStructure );
 
 	if ( err != OMX_ErrorNone ) {
-		fprintf( stderr, "[%s] SetConfig %X failed : %X\n", mName.c_str(), nIndex, err );
+		mDebugCallback( 0, "[%s] SetConfig %X failed : %X\n", mName.c_str(), nIndex, err );
 	} else if ( mVerbose ) {
-		fprintf( stderr, "[%s] SetConfig %X completed\n", mName.c_str(), nIndex );
+		mDebugCallback( 1, "[%s] SetConfig %X completed\n", mName.c_str(), nIndex );
 	}
 	return err;
 }
@@ -556,7 +577,7 @@ OMX_ERRORTYPE Component::SetupTunnel( uint16_t port_output, Component* next, uin
 	OMX_ERRORTYPE err = OMX_SetupTunnel( mHandle, port_output, next->mHandle, port_input );
 
 	if ( err != OMX_ErrorNone ) {
-		fprintf( stderr, "[%s] SetupTunnel from %d to %s:%d failed : %X\n", mName.c_str(), port_output, next->mName.c_str(), port_input, err );
+		mDebugCallback( 0, "[%s] SetupTunnel from %d to %s:%d failed : %X\n", mName.c_str(), port_output, next->mName.c_str(), port_input, err );
 	} else {
 		mOutputPorts[ port_output ].bTunneled = true;
 		mOutputPorts[ port_output ].pTunnel = next;
@@ -566,8 +587,8 @@ OMX_ERRORTYPE Component::SetupTunnel( uint16_t port_output, Component* next, uin
 		next->mInputPorts[ port_input ].nTunnelPort = port_output;
 		if ( false and port_copy ) {
 			if ( mVerbose ) {
-				fprintf( stderr, "Copy from %p:%d to %p:%d\n", port_copy->pParent, port_copy->nPort, next, port_input );
-				fprintf( stderr, "Copy from %s:%d to %s:%d\n", port_copy->pParent->name().c_str(), port_copy->nPort, next->name().c_str(), port_input );
+				mDebugCallback( 1, "Copy from %p:%d to %p:%d\n", port_copy->pParent, port_copy->nPort, next, port_input );
+				mDebugCallback( 1, "Copy from %s:%d to %s:%d\n", port_copy->pParent->name().c_str(), port_copy->nPort, next->name().c_str(), port_input );
 			}
 			OMX_PARAM_PORTDEFINITIONTYPE def;
 			OMX_INIT_STRUCTURE( def );
@@ -578,7 +599,7 @@ OMX_ERRORTYPE Component::SetupTunnel( uint16_t port_output, Component* next, uin
 			next->SetParameter( OMX_IndexParamPortDefinition, &def );
 		}
 		if ( mVerbose ) {
-			fprintf( stderr, "[%s] SetupTunnel from %d to %s:%d completed\n", mName.c_str(), port_output, next->mName.c_str(), port_input );
+			mDebugCallback( 1, "[%s] SetupTunnel from %d to %s:%d completed\n", mName.c_str(), port_output, next->mName.c_str(), port_input );
 			OMX_PARAM_PORTDEFINITIONTYPE def;
 			OMX_INIT_STRUCTURE( def );
 			def.nPortIndex = port_output;
@@ -757,10 +778,10 @@ OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U
 	if ( mVerbose and event != OMX_EventCmdComplete ) {
 		if ( event == OMX_EventError ) {
 			if ( (int)data1 != OMX_ErrorSameState ) {
-				fprintf( stderr, "[%s]OMX Error %X\n", mName.c_str(), data1 );
+				mDebugCallback( 0, "[%s]OMX Error %X\n", mName.c_str(), data1 );
 			}
 		} else {
-			fprintf( stderr, "Event on %p (%s) type %X [ %d, %d, %p ]\n", mHandle, mName.c_str(), event, data1, data2, eventdata );
+			mDebugCallback( 1, "Event on %p (%s) type %X [ %d, %d, %p ]\n", mHandle, mName.c_str(), event, data1, data2, eventdata );
 		}
 	}
 	return OMX_ErrorNone;
@@ -770,7 +791,7 @@ OMX_ERRORTYPE Component::EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U
 OMX_ERRORTYPE Component::EmptyBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
 	if ( mVerbose ) {
-		fprintf( stdout, "Component::EmptyBufferDone on %p (%s)%s\n", mHandle, mName.c_str(), ( buf->nFlags & OMX_BUFFERFLAG_ENDOFFRAME ) ? " (eof)" : "" );
+		mDebugCallback( 1, "Component::EmptyBufferDone on %p (%s)%s\n", mHandle, mName.c_str(), ( buf->nFlags & OMX_BUFFERFLAG_ENDOFFRAME ) ? " (eof)" : "" );
 	}
 	for ( auto p : mInputPorts ) {
 		if ( p.second.buffer == buf ) {
@@ -785,18 +806,18 @@ OMX_ERRORTYPE Component::EmptyBufferDone( OMX_BUFFERHEADERTYPE* buf )
 OMX_ERRORTYPE Component::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
 	if ( mVerbose ) {
-		fprintf( stdout, "Component::FillBufferDone on %p[%s] (%p)\n", mHandle, mName.c_str(), buf );
+		mDebugCallback( 1, "Component::FillBufferDone on %p[%s] (%p)\n", mHandle, mName.c_str(), buf );
 	}
 	for ( auto p : mOutputPorts ) {
 		if ( p.second.buffer == buf ) {
 			if ( mVerbose ) {
-				fprintf( stdout, "[%s] Component::FillBufferDone locking...\n", mName.c_str() );
+				mDebugCallback( 1, "[%s] Component::FillBufferDone locking...\n", mName.c_str() );
 			}
 			std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 			p.second.bufferDataAvailable = true;
 			mDataAvailableCond.notify_all();
 			if ( mVerbose ) {
-				fprintf( stdout, "[%s] Component::FillBufferDone unlocked\n", mName.c_str() );
+				mDebugCallback( 1, "[%s] Component::FillBufferDone unlocked\n", mName.c_str() );
 			}
 			break;
 		}
@@ -854,7 +875,7 @@ OMX_ERRORTYPE Component::EnablePort( uint16_t port )
 
 OMX_ERRORTYPE Component::CopyPort( Port* from, Port* to )
 {
-	printf( "CopyPort( %s->%d, %s->%d\n", from->pParent->name().c_str(), from->nPort, to->pParent->name().c_str(), to->nPort );
+	mDebugCallback( 1, "CopyPort( %s->%d, %s->%d\n", from->pParent->name().c_str(), from->nPort, to->pParent->name().c_str(), to->nPort );
 	OMX_PARAM_PORTDEFINITIONTYPE def;
 	OMX_INIT_STRUCTURE( def );
 	def.nPortIndex = from->nPort;
@@ -867,9 +888,9 @@ OMX_ERRORTYPE Component::CopyPort( Port* from, Port* to )
 }
 
 
-static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def )
+void Component::print_def( OMX_PARAM_PORTDEFINITIONTYPE def )
 {
-	printf("Port %u: %s %u/%u %u %u %s,%s,%s %ux%u %ux%u @%ufps %u\n",
+	mDebugCallback( 1, "Port %u: %s %u/%u %u %u %s,%s,%s %ux%u %ux%u @%ufps %u\n",
 		def.nPortIndex,
 		def.eDir == OMX_DirInput ? "in" : "out",
 		def.nBufferCountActual,
@@ -883,7 +904,7 @@ static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def )
 		def.format.video.nFrameHeight,
 		def.format.video.nStride,
 		def.format.video.nSliceHeight,
-		def.format.video.xFramerate >> 16, def.format.video.eColorFormat);
+		def.format.video.xFramerate >> 16, def.format.video.eColorFormat );
 }
 
 

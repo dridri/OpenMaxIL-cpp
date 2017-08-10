@@ -3,6 +3,7 @@
 #include <string.h>
 #include <IL/OMX_Types.h>
 #include <IL/OMX_Core.h>
+#include <IL/OMX_Component.h>
 #include <string>
 #include <vector>
 #include <list>
@@ -74,7 +75,7 @@ public:
 	std::map< uint16_t, Port >& outputPorts() { return mOutputPorts; }
 
 	static OMX_ERRORTYPE CopyPort( Port* from, Port* to );
-	static void setDebugOutputCallback( std::function<void( int level, const std::string& str )> callback );
+	static void setDebugOutputCallback( void (*callback)( int level, const std::string& fmt, ... ) );
 	static void DestroyAll();
 
 protected:
@@ -121,8 +122,8 @@ protected:
 	std::condition_variable mDataAvailableCond;
 
 	static uint64_t ticks64();
-
-	std::function<void( int level, const std::string& str )> mDebugCallback;
+	static void (*mDebugCallback)( int level, const std::string& fmt, ... );
+	static void DefaultDebugCallback( int level, const std::string& fmt, ... );
 
 private:
 	static OMX_ERRORTYPE genericeventhandler( OMX_HANDLETYPE handle, Component* component, OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );
@@ -133,6 +134,8 @@ private:
 	static std::list< Component* > mComponents;
 
 	int InitComponent();
+
+	static void print_def( OMX_PARAM_PORTDEFINITIONTYPE def );
 };
 
 }; // namespace IL

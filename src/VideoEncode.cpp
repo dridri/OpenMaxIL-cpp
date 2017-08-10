@@ -137,7 +137,7 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 	// 		avc.nCabacInitIdc = 0;
 			avc.eLoopFilterMode = OMX_VIDEO_AVCLoopFilterDisable;
 			if ( SetParameter( OMX_IndexParamVideoAvc, &avc ) != OMX_ErrorNone ) {
-				printf( "ERROR SETTING OMX_IndexParamVideoAvc\n" );
+				mDebugCallback( 0, "ERROR SETTING OMX_IndexParamVideoAvc\n" );
 // 				exit(0);
 			}
 	/*
@@ -147,11 +147,18 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 			SetConfig( OMX_IndexConfigTemporalDenoiseEnable, &temporal_denoise );
 	*/
 		} else {
+			OMX_VIDEO_PARAM_PROFILELEVELTYPE profileLevel;
+			OMX_INIT_STRUCTURE( profileLevel );
+			profileLevel.nPortIndex = 201;
+			profileLevel.eProfile = OMX_VIDEO_AVCProfileHigh;
+			profileLevel.eLevel = OMX_VIDEO_AVCLevel42;
+
 			OMX_CONFIG_PORTBOOLEANTYPE inlinePPSSPS;
 			OMX_INIT_STRUCTURE( inlinePPSSPS );
 			inlinePPSSPS.nPortIndex = 201;
 			inlinePPSSPS.bEnabled = OMX_FALSE;
 			SetParameter( OMX_IndexParamBrcmVideoAVCInlineHeaderEnable, &inlinePPSSPS );
+
 			OMX_CONFIG_PORTBOOLEANTYPE inlineVectors;
 			OMX_INIT_STRUCTURE( inlineVectors );
 			inlineVectors.nPortIndex = 201;
@@ -293,7 +300,7 @@ const std::map< uint32_t, uint8_t* >& VideoEncode::headers() const
 OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
 	if ( mVerbose ) {
-		printf( "VideoEncode::FillBufferDone() locking...\n" );
+		mDebugCallback( 1, "VideoEncode::FillBufferDone() locking...\n" );
 	}
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 	if ( mBuffer->nFilledLen > 0 and mBuffer->nFilledLen < 32 and mHeaders.find( mBuffer->nFilledLen ) == mHeaders.end() ) {
@@ -304,7 +311,7 @@ OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 	mDataAvailable = true;
 	mDataAvailableCond.notify_all();
 	if ( mVerbose ) {
-		printf( "VideoEncode::FillBufferDone() unlocked\n" );
+		mDebugCallback( 1, "VideoEncode::FillBufferDone() unlocked\n" );
 	}
 	return OMX_ErrorNone;
 }
@@ -337,7 +344,7 @@ int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 	uint32_t datalen = 0;
 
 	if ( mVerbose ) {
-		printf( "VideoEncode::getOutputData() locking...\n" );
+		mDebugCallback( 0, "VideoEncode::getOutputData() locking...\n" );
 	}
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 
@@ -349,7 +356,7 @@ int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 		mDataAvailable = false;
 	} else if ( wait ) {
 		if ( mVerbose ) {
-			printf( "VideoEncode::getOutputData() : Waiting...\n" );
+			mDebugCallback( 0, "VideoEncode::getOutputData() : Waiting...\n" );
 		}
 		mDataAvailableCond.wait( locker );
 		if ( pBuf ) {
@@ -360,19 +367,19 @@ int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 	} else {
 		locker.unlock();
 		if ( mVerbose ) {
-			printf( "VideoEncode::getOutputData() unlocked\n" );
+			mDebugCallback( 0, "VideoEncode::getOutputData() unlocked\n" );
 		}
 		return OMX_ErrorOverflow;
 	}
 
 	locker.unlock();
 	if ( mVerbose ) {
-		printf( "VideoEncode::getOutputData() unlocked\n" );
+		mDebugCallback( 0, "VideoEncode::getOutputData() unlocked\n" );
 	}
 
 	if ( mBuffer ) {
 		if ( mVerbose ) {
-			printf( "VideoEncode::getOutputData() : mHandle->FillThisBuffer()\n" );
+			mDebugCallback( 0, "VideoEncode::getOutputData() : mHandle->FillThisBuffer()\n" );
 		}
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, mBuffer );
 		if ( err != OMX_ErrorNone ) {

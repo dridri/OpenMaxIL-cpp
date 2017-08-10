@@ -217,13 +217,13 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len, bool corrupted )
 */
 		// Ensure that everything is ok
 		if ( len > mBuffer->nAllocLen ) {
-			printf( "LEAK : %d > %d\n", len, mBuffer->nAllocLen );
+			mDebugCallback( 0, "LEAK : %d > %d\n", len, mBuffer->nAllocLen );
 			len = mBuffer->nAllocLen;
 			PrintBuffer( pBuf, len );
 			fflush( stdout );
 		}
 		if ( mBuffer->pBuffer != mBufferPtr ) {
-			printf( "LEAK : %p != %p\n", mBuffer->pBuffer, mBufferPtr );
+			mDebugCallback( 0, "LEAK : %p != %p\n", mBuffer->pBuffer, mBufferPtr );
 // 			mBuffer->pBuffer = mBufferPtr;
 			memcpy( mBuffer, &mBufferCopy, sizeof(mBufferCopy) );
 			PrintBuffer( pBuf, len );
@@ -246,7 +246,7 @@ void VideoDecode::fillInput( uint8_t* pBuf, uint32_t len, bool corrupted )
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->EmptyThisBuffer( mHandle, mBuffer );
 		static int err_cnt = 0;
 		if ( err != OMX_ErrorNone ) {
-			printf( "EmptyThisBuffer error (#%d) : 0x%08X (bufSize : %d ; corrupted : %d)\n", err_cnt, (uint32_t)err, len, corrupted );
+			mDebugCallback( 0, "EmptyThisBuffer error (#%d) : 0x%08X (bufSize : %d ; corrupted : %d)\n", err_cnt, (uint32_t)err, len, corrupted );
 			PrintBuffer( pBuf, len );
 			fflush( stdout );
 			err_cnt++;

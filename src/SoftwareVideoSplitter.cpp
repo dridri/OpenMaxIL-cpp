@@ -42,7 +42,7 @@ OMX_ERRORTYPE SoftwareVideoSplitter::SetState( const Component::State& st )
 bool SoftwareVideoSplitter::CustomTunnelInput( Component* prev, uint16_t port_output, uint16_t port_input )
 {
 	if ( mVerbose ) {
-		printf( "%p[%s] SoftwareVideoSplitter::CustomTunnelInput( %p, %d, %d )\n", this, mName.c_str(), prev, port_output, port_input );
+		mDebugCallback( 1, "%p[%s] SoftwareVideoSplitter::CustomTunnelInput( %p, %d, %d )\n", this, mName.c_str(), prev, port_output, port_input );
 	}
 
 	prev->AllocateOutputBuffer( port_output );
@@ -72,7 +72,7 @@ OMX_ERRORTYPE SoftwareVideoSplitter::SetupTunnel( Component* next, uint8_t port_
 	mOutputPorts.insert( std::make_pair( port_output, p ) );
 
 	if ( mVerbose ) {
-		printf( "%p[%s] SoftwareVideoSplitter::SetupTunnel( %d, %p, %d )\n", this, mName.c_str(), port_output, next, port_input );
+		mDebugCallback( 1, "%p[%s] SoftwareVideoSplitter::SetupTunnel( %d, %p, %d )\n", this, mName.c_str(), port_output, next, port_input );
 	}
 
 	if ( port_input == 0 ) {
@@ -84,7 +84,7 @@ OMX_ERRORTYPE SoftwareVideoSplitter::SetupTunnel( Component* next, uint8_t port_
 			}
 		}
 		if ( mVerbose ) {
-			printf( "%p[%s] SoftwareVideoSplitter::SetupTunnel detected input port : %d\n", mHandle, mName.c_str(), port_input );
+			mDebugCallback( 1, "%p[%s] SoftwareVideoSplitter::SetupTunnel detected input port : %d\n", mHandle, mName.c_str(), port_input );
 		}
 	}
 
@@ -115,10 +115,10 @@ void SoftwareVideoSplitter::ThreadRun()
 			continue;
 		}
 
-		printf( " =================> SoftwareVideoSplitter waiting data on port %d...\n", mInputPorts[400].nTunnelPort );
+		mDebugCallback( 1, " =================> SoftwareVideoSplitter waiting data on port %d...\n", mInputPorts[400].nTunnelPort );
 		datasize = mInputPorts[400].pTunnel->getOutputData( mInputPorts[400].nTunnelPort, data, true );
 		bool eof = ( mInputPorts[400].pTunnel->outputPorts()[mInputPorts[400].nTunnelPort].buffer->nFlags & OMX_BUFFERFLAG_ENDOFFRAME );
-		printf( " =================> SoftwareVideoSplitter produced %d bytes\n", datasize );
+		mDebugCallback( 1, " =================> SoftwareVideoSplitter produced %d bytes\n", datasize );
 
 		if ( datasize > 0 ) {
 			for ( auto x : mOutputPorts ) {
