@@ -75,7 +75,7 @@ public:
 	std::map< uint16_t, Port >& outputPorts() { return mOutputPorts; }
 
 	static OMX_ERRORTYPE CopyPort( Port* from, Port* to );
-	static void setDebugOutputCallback( void (*callback)( int level, const std::string& fmt, ... ) );
+	static void setDebugOutputCallback( void (*callback)( int level, const std::string fmt, ... ) );
 	static void DestroyAll();
 
 protected:
@@ -122,8 +122,8 @@ protected:
 	std::condition_variable mDataAvailableCond;
 
 	static uint64_t ticks64();
-	static void (*mDebugCallback)( int level, const std::string& fmt, ... );
-	static void DefaultDebugCallback( int level, const std::string& fmt, ... );
+	static void (*mDebugCallback)( int level, const std::string fmt, ... );
+	static void DefaultDebugCallback( int level, const std::string fmt, ... );
 
 private:
 	static OMX_ERRORTYPE genericeventhandler( OMX_HANDLETYPE handle, Component* component, OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );

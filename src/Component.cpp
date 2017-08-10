@@ -19,7 +19,7 @@ using namespace IL;
 bool Component::mCoreReady = false;
 std::list< OMX_U8* > Component::mAllAllocatedBuffers;
 std::list< Component* > Component::mComponents;
-void (*Component::mDebugCallback)( int level, const std::string& fmt, ... ) = nullptr;
+void (*Component::mDebugCallback)( int level, const std::string fmt, ... ) = nullptr;
 
 OMX_ERRORTYPE Component::genericeventhandler( OMX_HANDLETYPE handle, Component* component, OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata )
 {
@@ -113,16 +113,16 @@ Component::~Component()
 }
 
 
-void Component::setDebugOutputCallback( void (*callback)( int level, const std::string& fmt, ... ) )
+void Component::setDebugOutputCallback( void (*callback)( int level, const std::string fmt, ... ) )
 {
 	mDebugCallback = callback;
 }
 
 
-void Component::DefaultDebugCallback( int level, const std::string& fmt, ... )
+void Component::DefaultDebugCallback( int level, const std::string fmt, ... )
 {
 	va_list opt;
-	va_start( opt, fmt.c_str() );
+	va_start( opt, fmt );
 
 	if ( level == 0 ) {
 		vfprintf( stderr, fmt.c_str(), opt );
