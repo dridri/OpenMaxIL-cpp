@@ -49,7 +49,7 @@ Component::Component( const std::string& name, const std::vector< PortInit >& in
 {
 	if ( not mCoreReady ) {
 		mCoreReady = true;
-		atexit( &Component::onexit );
+		atexit( &Component::DestroyAll );
 		OMX_Init();
 	}
 
@@ -675,9 +675,9 @@ OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int por
 }
 
 
-void Component::onexit()
+void Component::DestroyAll()
 {
-	printf( "Component::onexit()\n" );
+	printf( "Component::DestroyAll()\n" );
 
 	// First, stop cameras
 	for( auto comp : mComponents ) {
@@ -689,7 +689,7 @@ void Component::onexit()
 	}
 	usleep( 1000 * 100 );
 
-	// Secondly, reversly stop components
+	// Secondly, stop components
 	std::list< Component* >::iterator iter = mComponents.begin();
 	std::list< Component* >::reverse_iterator riter = mComponents.rbegin();
 // 	for ( iter = mComponents.rbegin(); iter != mComponents.rend(); iter++ ) {
@@ -698,9 +698,7 @@ void Component::onexit()
 		(*iter)->SetState( Component::StateIdle, false );
 	}
 
-	// Thirdly, 
-
-	// Fourth, reversly remove components
+	// Thirdly, reversly remove components
 	for ( riter = mComponents.rbegin(); riter != mComponents.rend(); riter++ ) {
 		printf( "Deleting component %s\n", (*riter)->mName.c_str() );
 		delete (*riter);

@@ -118,13 +118,13 @@ protected:
 	std::condition_variable mDataAvailableCond;
 
 	static uint64_t ticks64();
+	static void DestroyAll();
 
 private:
 	static OMX_ERRORTYPE genericeventhandler( OMX_HANDLETYPE handle, Component* component, OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );
 	static OMX_ERRORTYPE emptied( OMX_HANDLETYPE handle, Component* component, OMX_BUFFERHEADERTYPE* buf );
 	static OMX_ERRORTYPE filled( OMX_HANDLETYPE handle, Component* component, OMX_BUFFERHEADERTYPE* buf );
 	static bool mCoreReady;
-	static void onexit();
 	static std::list< OMX_U8* > mAllAllocatedBuffers;
 	static std::list< Component* > mComponents;
 
