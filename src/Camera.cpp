@@ -37,13 +37,13 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 	if ( mVerbose ) {
 		mDebugCallback( 0, "Camera %d ready\n", mDeviceNumber );
 	}
-
+/*
 	OMX_PARAM_BRCMDISABLEPROPRIETARYTUNNELSTYPE tunnels;
 	OMX_INIT_STRUCTURE( tunnels );
 	tunnels.bUseBuffers = OMX_TRUE;
 	tunnels.nPortIndex = 70;
 	SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
-
+*/
 // 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
