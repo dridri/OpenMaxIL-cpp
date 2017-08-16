@@ -138,16 +138,14 @@ int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 	OMX_INIT_STRUCTURE( def );
 	def.nPortIndex = 70;
 	GetParameter( OMX_IndexParamPortDefinition, &def );
-	def.format.video.nFrameWidth  = width;
-	def.format.video.nFrameHeight = height;
-	def.format.video.nSliceHeight = height;
-	def.format.video.xFramerate   = 30 << 16;
-	if ( width < 1920 and height < 1080 ) {
-		def.format.video.xFramerate   = 60 << 16; // default to 60 FPS
-	}
+// 	def.format.video.nFrameWidth  = width;
+// 	def.format.video.nFrameHeight = height;
+// 	def.format.video.nSliceHeight = height;
+	def.format.video.xFramerate   = 0;
 // 	def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
 	def.format.video.nStride      = 0;
 	def.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
+
 	SetParameter( OMX_IndexParamPortDefinition, &def );
 
 	// Also set it for port 71 (video port)
@@ -194,7 +192,8 @@ int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 	def.format.image.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
 	SetParameter( OMX_IndexParamPortDefinition, &def );
 
-	setFramerate( def.format.video.xFramerate );
+	setResolution( width, height );
+	setFramerate( 30 );
 	setBrightness( 50 );
 	setContrast( 0 );
 	setSaturation( 0 );
@@ -504,7 +503,7 @@ OMX_ERRORTYPE Camera::setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid
 
 	OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
 	if ( ret != OMX_ErrorNone ) {
-		mDebugCallback( 0, "Cannot disable lens shading : 0x%08X\n", ret ); fflush(stderr);
+		mDebugCallback( 0, "Cannot set lens shading : 0x%08X\n", ret ); fflush(stderr);
 	}
 
 	return ret;
