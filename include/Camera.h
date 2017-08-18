@@ -83,7 +83,7 @@ public:
 	OMX_ERRORTYPE SetupTunnelImage( Component* next, uint8_t port_input = 0 );
 
 	OMX_ERRORTYPE setSensorMode( uint8_t mode );
-	OMX_ERRORTYPE setResolution( uint32_t width, uint32_t height );
+	OMX_ERRORTYPE setResolution( uint32_t width, uint32_t height, uint8_t port = 71 );
 	OMX_ERRORTYPE setFramerate( uint32_t fps );
 	OMX_ERRORTYPE setBrightness( uint32_t value );
 	OMX_ERRORTYPE setSharpness( uint32_t value );

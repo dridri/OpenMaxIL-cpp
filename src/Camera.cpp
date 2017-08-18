@@ -133,14 +133,15 @@ int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 	device.nU32 = mDeviceNumber;
 	SetParameter( OMX_IndexParamCameraDeviceNumber, &device );
 
+/*
 	// Set port definition
 	OMX_PARAM_PORTDEFINITIONTYPE def;
 	OMX_INIT_STRUCTURE( def );
 	def.nPortIndex = 70;
 	GetParameter( OMX_IndexParamPortDefinition, &def );
-// 	def.format.video.nFrameWidth  = width;
-// 	def.format.video.nFrameHeight = height;
-// 	def.format.video.nSliceHeight = height;
+	def.format.video.nFrameWidth  = width;
+	def.format.video.nFrameHeight = height;
+// 	def.format.video.nSliceHeight = height / 8;
 	def.format.video.xFramerate   = 0;
 // 	def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
 	def.format.video.nStride      = 0;
@@ -191,8 +192,9 @@ int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 	def.format.image.nStride      = 0;
 	def.format.image.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
 	SetParameter( OMX_IndexParamPortDefinition, &def );
-
-	setResolution( width, height );
+*/
+	setResolution( width, height, 71 );
+	setResolution( width, height, 72 );
 	setFramerate( 30 );
 	setBrightness( 50 );
 	setContrast( 0 );
@@ -207,7 +209,7 @@ int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 }
 
 
-OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height )
+OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height, uint8_t port )
 {
 	if ( mSensorMode == 7 ) {
 		mWidth = std::min( width, 640u );
@@ -232,24 +234,31 @@ OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height )
 	OMX_PARAM_PORTDEFINITIONTYPE def;
 	OMX_INIT_STRUCTURE( def );
 
-	def.nPortIndex = 70;
-	GetParameter( OMX_IndexParamPortDefinition, &def );
-	def.format.video.nFrameWidth  = mWidth;
-	def.format.video.nFrameHeight = mHeight;
-// 	def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
-	def.format.video.nStride      = 0;
-	SetParameter( OMX_IndexParamPortDefinition, &def );
-	GetParameter( OMX_IndexParamPortDefinition, &def );
-	def.nPortIndex = 71;
-	SetParameter( OMX_IndexParamPortDefinition, &def );
+	if ( port == 70 or port == 71 ) {
+		def.nPortIndex = 70;
+		GetParameter( OMX_IndexParamPortDefinition, &def );
+		def.format.video.nFrameWidth  = mWidth;
+		def.format.video.nFrameHeight = mHeight;
+// 		def.format.video.nSliceHeight = mHeight / 8;
+		def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
+		def.format.video.nStride      = 0;
+		SetParameter( OMX_IndexParamPortDefinition, &def );
 
-	def.nPortIndex = 72;
-	GetParameter( OMX_IndexParamPortDefinition, &def );
-	def.format.image.nFrameWidth = mWidth;
-	def.format.image.nFrameHeight = mHeight;
-// 	def.format.image.nStride      = ( def.format.image.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
-	def.format.image.nStride      = 0;
-	SetParameter( OMX_IndexParamPortDefinition, &def );
+		GetParameter( OMX_IndexParamPortDefinition, &def );
+		def.nPortIndex = 71;
+		SetParameter( OMX_IndexParamPortDefinition, &def );
+	}
+
+	if ( port == 72 ) {
+		def.nPortIndex = 72;
+		GetParameter( OMX_IndexParamPortDefinition, &def );
+		def.format.image.nFrameWidth = mWidth;
+		def.format.image.nFrameHeight = mHeight;
+// 		def.format.image.nSliceHeight = mHeight / 8;
+		def.format.image.nStride      = ( def.format.image.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
+		def.format.image.nStride      = 0;
+		SetParameter( OMX_IndexParamPortDefinition, &def );
+	}
 
 	return OMX_ErrorNone;
 }
@@ -304,7 +313,7 @@ int Camera::HighSpeedMode( uint32_t sensor_mode )
 	/*
 	- 0 - auto
 	- 1 - 1080P30 cropped (680 pixels off left/right, 692 pixels off top/bottom), up to 30fps
-	- 2 - 3240x2464 Full 4:3, up to 15fps
+	- 2 - 3240x2464 Full 4:3, up to 15fps (3280)
 	- 3 - 3240x2464 Full 4:3, up to 15fps (identical to 2)
 	- 4 - 1640x1232 binned 4:3, up 40fps
 	- 5 - 1640x922 2x2 binned 16:9 (310 pixels off top/bottom before binning), up to 40fps
@@ -352,7 +361,6 @@ int Camera::HighSpeedMode( uint32_t sensor_mode )
 	capture_mode.bContinuous = OMX_TRUE;
 	SetConfig( OMX_IndexConfigCaptureMode, &capture_mode );
 
-
 	OMX_PARAM_CAMERAIMAGEPOOLTYPE pool;
 	OMX_INIT_STRUCTURE( pool );
 	GetParameter( OMX_IndexParamCameraImagePool, &pool );
@@ -396,28 +404,28 @@ int Camera::HighSpeedMode( uint32_t sensor_mode )
 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmRedEyeReduction;
 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmStillsDenoise;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmFaceRecognition;
 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmFaceBeautification;
 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmSceneDetection;
 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmAntiShake;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmVideoStabilisation;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmVideoDenoise;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmImageEffects;
 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmAntiShake;
+// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmVideoStabilisation;
+// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmStillsDenoise;
+// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmVideoDenoise;
+// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmDarkSubtract;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmDynamicRangeExpansion;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmHighDynamicRange;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
 /*
 	// ALL UNSUPPORTED
 	OMX_CONFIG_BOOLEANTYPE colour_denoise;
