@@ -324,7 +324,7 @@ OMX_ERRORTYPE Component::DisableProprietaryTunnels( uint8_t port, bool disable )
 	OMX_INIT_STRUCTURE( tunnels );
 	tunnels.bUseBuffers = (OMX_BOOL)disable;
 	tunnels.nPortIndex = port;
-	SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
+	return SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
 }
 
 
