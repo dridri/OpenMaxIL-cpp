@@ -310,11 +310,29 @@ int Component::InitComponent()
 }
 
 
+OMX_ERRORTYPE Component::DisableProprietaryTunnels( uint8_t port, bool disable )
+{
+	if ( port == 0 ) {
+		for ( uint32_t i = 40; i <= 350; i++ ) {
+			if ( mOutputPorts.find(i) != mOutputPorts.end() and ( mOutputPorts[i].type == Video or mOutputPorts[i].type == Image ) ) {
+				port = i;
+				break;
+			}
+		}
+	}
+	OMX_PARAM_BRCMDISABLEPROPRIETARYTUNNELSTYPE tunnels;
+	OMX_INIT_STRUCTURE( tunnels );
+	tunnels.bUseBuffers = (OMX_BOOL)disable;
+	tunnels.nPortIndex = port;
+	SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
+}
+
+
 OMX_ERRORTYPE Component::AllocateInputBuffer( uint16_t port )
 {
 	if ( port == 0 ) {
 		for ( uint32_t i = 40; i <= 350; i++ ) {
-			if ( mInputPorts.find(i) != mInputPorts.end() and mInputPorts[i].type == Video ) {
+			if ( mInputPorts.find(i) != mInputPorts.end() and ( mInputPorts[i].type == Video or mInputPorts[i].type == Image ) ) {
 				port = i;
 				break;
 			}
@@ -333,7 +351,7 @@ OMX_ERRORTYPE Component::AllocateOutputBuffer( uint16_t port )
 {
 	if ( port == 0 ) {
 		for ( uint32_t i = 40; i <= 350; i++ ) {
-			if ( mOutputPorts.find(i) != mOutputPorts.end() and mOutputPorts[i].type == Video ) {
+			if ( mOutputPorts.find(i) != mOutputPorts.end() and ( mOutputPorts[i].type == Video or mOutputPorts[i].type == Image ) ) {
 				port = i;
 				break;
 			}
