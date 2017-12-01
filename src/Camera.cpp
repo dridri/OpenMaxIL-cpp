@@ -400,32 +400,26 @@ int Camera::HighSpeedMode( uint32_t sensor_mode )
 	OMX_PARAM_CAMERADISABLEALGORITHMTYPE disableAlgorithm;
 	OMX_INIT_STRUCTURE( disableAlgorithm );
 	disableAlgorithm.bDisabled = OMX_TRUE;
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmFacetracking;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmRedEyeReduction;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmFaceRecognition;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmFaceBeautification;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmSceneDetection;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmImageEffects;
-	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmAntiShake;
-// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmVideoStabilisation;
-// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmStillsDenoise;
-// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmVideoDenoise;
-// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmDarkSubtract;
-// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmDynamicRangeExpansion;
-// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
-	disableAlgorithm.eAlgorithm = OMX_CameraDisableAlgorithmHighDynamicRange;
-// 	SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+	std::list<OMX_CAMERADISABLEALGORITHMTYPE> algo_disable = {
+		OMX_CameraDisableAlgorithmFacetracking,
+		OMX_CameraDisableAlgorithmRedEyeReduction,
+// 		OMX_CameraDisableAlgorithmVideoStabilisation,
+		OMX_CameraDisableAlgorithmWriteRaw,
+// 		OMX_CameraDisableAlgorithmVideoDenoise,
+// 		OMX_CameraDisableAlgorithmStillsDenoise,
+// 		OMX_CameraDisableAlgorithmAntiShake,
+// 		OMX_CameraDisableAlgorithmImageEffects,
+// 		OMX_CameraDisableAlgorithmDarkSubtract,
+// 		OMX_CameraDisableAlgorithmDynamicRangeExpansion,
+		OMX_CameraDisableAlgorithmFaceRecognition,
+		OMX_CameraDisableAlgorithmFaceBeautification,
+		OMX_CameraDisableAlgorithmSceneDetection,
+// 		OMX_CameraDisableAlgorithmHighDynamicRange,
+	};
+	for ( OMX_CAMERADISABLEALGORITHMTYPE algo : algo_disable ) {
+		disableAlgorithm.eAlgorithm = algo;
+		SetParameter( OMX_IndexParamCameraDisableAlgorithm, &disableAlgorithm );
+	}
 /*
 	// ALL UNSUPPORTED
 	OMX_CONFIG_BOOLEANTYPE colour_denoise;
@@ -667,6 +661,16 @@ OMX_ERRORTYPE Camera::setExposureValue( uint16_t exposure_compensation, float ap
 	exposure_value.bAutoShutterSpeed = (OMX_BOOL)( shutter_speed_us == 0 );
 	exposure_value.nShutterSpeedMsec = shutter_speed_us;
 	return SetConfig( OMX_IndexConfigCommonExposureValue, &exposure_value );
+}
+
+
+OMX_ERRORTYPE Camera::setImageFilter( ImageFilter filter )
+{
+	OMX_CONFIG_IMAGEFILTERTYPE image_filter;
+	OMX_INIT_STRUCTURE( image_filter );
+	image_filter.nPortIndex = OMX_ALL;
+	image_filter.eImageFilter = (OMX_IMAGEFILTERTYPE)filter;
+	return SetConfig( OMX_IndexConfigCommonImageFilter, &image_filter );
 }
 
 
