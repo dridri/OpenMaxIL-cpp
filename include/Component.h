@@ -42,6 +42,7 @@ public:
 		bool bTunneled;
 		Component* pTunnel;
 		uint16_t nTunnelPort;
+		bool bDisableProprietary;
 		bool bufferRunning;
 		bool bufferNeedsData;
 		bool bufferDataAvailable;
@@ -58,6 +59,8 @@ public:
 	OMX_ERRORTYPE DestroyTunnel( uint16_t port_output );
 	OMX_ERRORTYPE AllocateInputBuffer( uint16_t port = 0 );
 	OMX_ERRORTYPE AllocateOutputBuffer( uint16_t port = 0 );
+
+	OMX_ERRORTYPE DisableProprietaryTunnels( uint8_t port = 0, bool disable = true );
 
 	OMX_ERRORTYPE SendCommand( OMX_COMMANDTYPE Cmd, OMX_U32 nParam1, OMX_PTR pCmdData );
 	OMX_ERRORTYPE GetParameter( OMX_INDEXTYPE nParamIndex, OMX_PTR pComponentParameterStructure );
