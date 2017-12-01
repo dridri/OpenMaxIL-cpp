@@ -14,6 +14,7 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 	, mBufferPtr( nullptr )
 	, mDataAvailable( false )
 {
+/*
 	OMX_PARAM_PORTDEFINITIONTYPE def;
 	OMX_INIT_STRUCTURE( def );
 	def.nPortIndex = 201;
@@ -27,7 +28,7 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 	def.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
 	def.format.video.nBitrate = bitrate_kbps * 1024;
 	SetParameter( OMX_IndexParamPortDefinition, &def );
-
+*/
 	OMX_VIDEO_PARAM_PORTFORMATTYPE pfmt;
 	OMX_INIT_STRUCTURE( pfmt );
 	pfmt.nPortIndex = 201;
