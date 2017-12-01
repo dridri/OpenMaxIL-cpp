@@ -7,7 +7,7 @@ namespace IL {
 class VideoRender : public IL::Component
 {
 public:
-	VideoRender( uint32_t offset_x = 0, uint32_t offset_y = 0, uint32_t width = 0, uint32_t height = 0, bool verbose = false );
+	VideoRender( int32_t offset_x = 0, int32_t offset_y = 0, int32_t width = 0, int32_t height = 0, bool verbose = false );
 	~VideoRender();
 
 	OMX_ERRORTYPE setMirror( bool hrzn, bool vert );

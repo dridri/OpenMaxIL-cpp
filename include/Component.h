@@ -42,6 +42,7 @@ public:
 		bool bTunneled;
 		Component* pTunnel;
 		uint16_t nTunnelPort;
+		bool bDisableProprietary;
 		bool bufferRunning;
 		bool bufferNeedsData;
 		bool bufferDataAvailable;

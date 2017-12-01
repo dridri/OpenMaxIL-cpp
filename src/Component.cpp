@@ -1,3 +1,4 @@
+#include <VideoRender.h>
 #include <stdarg.h>
 #include "Component.h"
 #include <unistd.h>
@@ -64,6 +65,7 @@ Component::Component( const std::string& name, const std::vector< PortInit >& in
 		p.type = n.type;
 		p.bEnabled = false;
 		p.bTunneled = false;
+		p.bDisableProprietary = false;
 		p.buffer = nullptr;
 		p.bufferRunning = false;
 		p.bufferNeedsData = false;
@@ -80,6 +82,7 @@ Component::Component( const std::string& name, const std::vector< PortInit >& in
 		p.type = n.type;
 		p.bEnabled = false;
 		p.bTunneled = false;
+		p.bDisableProprietary = false;
 		p.buffer = nullptr;
 		p.bufferRunning = false;
 		p.bufferNeedsData = false;
@@ -160,7 +163,7 @@ OMX_ERRORTYPE Component::SetState( const State& st_, bool wait )
 				}
 				if ( p.bEnabled ) {
 					GetParameter( OMX_IndexParamPortDefinition, &portdef );
-					print_def( portdef );
+					if ( mVerbose ) print_def( portdef );
 				}
 			}
 		}
@@ -183,7 +186,7 @@ OMX_ERRORTYPE Component::SetState( const State& st_, bool wait )
 				}
 				if ( p.bEnabled ) {
 					GetParameter( OMX_IndexParamPortDefinition, &portdef );
-					print_def( portdef );
+					if ( mVerbose ) print_def( portdef );
 				}
 			}
 		}
@@ -219,7 +222,7 @@ OMX_ERRORTYPE Component::SetState( const State& st_, bool wait )
 	}
 
 	if ( wait ) {
-		mDebugCallback( 1, "[%s]Wating state to be %d\n", mName.c_str(), st );
+		if ( mVerbose ) mDebugCallback( 1, "[%s]Wating state to be %d\n", mName.c_str(), st );
 		OMX_ERRORTYPE r;
 		OMX_STATETYPE st_wait = OMX_StateInvalid;
 		do {
@@ -312,6 +315,7 @@ int Component::InitComponent()
 
 OMX_ERRORTYPE Component::DisableProprietaryTunnels( uint8_t port, bool disable )
 {
+	mDebugCallback( 1, "[%s] DisableProprietaryTunnels( %d, %d )\n", mName.c_str(), port, disable );
 	if ( port == 0 ) {
 		for ( uint32_t i = 40; i <= 350; i++ ) {
 			if ( mOutputPorts.find(i) != mOutputPorts.end() and ( mOutputPorts[i].type == Video or mOutputPorts[i].type == Image ) ) {
@@ -320,11 +324,27 @@ OMX_ERRORTYPE Component::DisableProprietaryTunnels( uint8_t port, bool disable )
 			}
 		}
 	}
+
+	if ( port == 0 ) {
+		return OMX_ErrorBadPortIndex;
+	}
+
+	mOutputPorts[port].bDisableProprietary = true;
+
 	OMX_PARAM_BRCMDISABLEPROPRIETARYTUNNELSTYPE tunnels;
 	OMX_INIT_STRUCTURE( tunnels );
 	tunnels.bUseBuffers = (OMX_BOOL)disable;
 	tunnels.nPortIndex = port;
-	return SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
+	OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
+
+	if ( dynamic_cast<Camera*>(this) != nullptr ) {
+		Camera* camera = dynamic_cast<Camera*>(this);
+		if ( port == 70 ) {
+			port = 71;
+		}
+		camera->setResolution( camera->width(port), camera->height(port), port );
+	}
+	return ret;
 }
 
 
@@ -444,7 +464,6 @@ int32_t Component::getOutputData( uint16_t port, uint8_t* pBuf, bool wait )
 			memcpy( pBuf, buffer->pBuffer, buffer->nFilledLen );
 		}
 		datalen = buffer->nFilledLen;
-		locker.unlock();
 		if ( mVerbose ) {
 			mDebugCallback( 1, "[%s] Component::getOutputData() unlocked\n", mName.c_str() );
 		}
@@ -562,7 +581,7 @@ OMX_ERRORTYPE Component::SetupTunnel( uint16_t port_output, Component* next, uin
 	}
 
 	if ( mVerbose ) {
-		printf( "%p[%s] SetupTunnel( %d, %p, %d )\n", mHandle, mName.c_str(), port_output, next, port_input );
+		mDebugCallback( 1, "%p[%s] SetupTunnel( %d, %p, %d )\n", mHandle, mName.c_str(), port_output, next, port_input );
 	}
 
 	if ( mHandle == nullptr or next == nullptr or next->mHandle == nullptr ) {
@@ -572,14 +591,14 @@ OMX_ERRORTYPE Component::SetupTunnel( uint16_t port_output, Component* next, uin
 	if ( port_input == 0 ) {
 		for ( auto p : next->mInputPorts ) {
 			Port port = p.second;
-			printf( "===> types : %d[%d] | %d[%d]\n", (uint32_t)port.type, port.nPort, (uint32_t)mOutputPorts[port_output].type, mOutputPorts[port_output].nPort );
+			mDebugCallback( 1, "===> types : %d[%d] | %d[%d]\n", (uint32_t)port.type, port.nPort, (uint32_t)mOutputPorts[port_output].type, mOutputPorts[port_output].nPort );
 			if ( ( (uint32_t)port.type & (uint32_t)mOutputPorts[port_output].type ) != 0 ) {
 				port_input = port.nPort;
 				break;
 			}
 		}
 		if ( mVerbose ) {
-			printf( "%p[%s] SetupTunnel detected input port : %d\n", mHandle, mName.c_str(), port_input );
+			mDebugCallback( 1, "%p[%s] SetupTunnel detected input port : %d\n", mHandle, mName.c_str(), port_input );
 		}
 	}
 
@@ -587,10 +606,10 @@ OMX_ERRORTYPE Component::SetupTunnel( uint16_t port_output, Component* next, uin
 	OMX_INIT_STRUCTURE( def );
 	def.nPortIndex = port_output;
 	GetParameter( OMX_IndexParamPortDefinition, &def );
-	print_def( def );
+	if ( mVerbose ) print_def( def );
 	def.nPortIndex = port_input;
 	next->GetParameter( OMX_IndexParamPortDefinition, &def );
-	print_def( def );
+	if ( mVerbose ) print_def( def );
 
 	OMX_ERRORTYPE err = OMX_SetupTunnel( mHandle, port_output, next->mHandle, port_input );
 
@@ -613,7 +632,7 @@ OMX_ERRORTYPE Component::SetupTunnel( uint16_t port_output, Component* next, uin
 			def.nPortIndex = port_copy->nPort;
 			port_copy->pParent->GetParameter( OMX_IndexParamPortDefinition, &def );
 			print_def( def );
-			def.nPortIndex = port_input;
+			if ( mVerbose ) def.nPortIndex = port_input;
 			next->SetParameter( OMX_IndexParamPortDefinition, &def );
 		}
 		if ( mVerbose ) {
@@ -657,7 +676,7 @@ OMX_ERRORTYPE Component::DestroyTunnel( uint16_t port_output )
 OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int port, bool enable )
 {
 	if ( mVerbose ) {
-		printf( "%p[%s]->AllocateBuffers( %p, %d, %d )\n", mHandle, mName.c_str(), buffer, port, enable );
+		mDebugCallback( 1, "%p[%s]->AllocateBuffers( %p, %d, %d )\n", mHandle, mName.c_str(), buffer, port, enable );
 	}
 	OMX_ERRORTYPE ret = OMX_ErrorNone;
 	uint32_t i;
@@ -679,7 +698,7 @@ OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int por
 	}
 
 	if ( mVerbose ) {
-		printf( "   portdef.nBufferCountActual : %d\n   portdef.nBufferSize : %d\n", portdef.nBufferCountActual, portdef.nBufferSize );
+		mDebugCallback( 1, "   portdef.nBufferCountActual : %d\n   portdef.nBufferSize : %d\n", portdef.nBufferCountActual, portdef.nBufferSize );
 	}
 
 	uint32_t size = portdef.nBufferSize;
@@ -698,11 +717,11 @@ OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int por
 			return OMX_ErrorInsufficientResources;
 		}
 		if ( mVerbose ) {
-			printf( "Allocated a buffer of %d bytes\n", size );
+			mDebugCallback( 1, "Allocated a buffer of %d bytes\n", size );
 		}
 		ret = OMX_UseBuffer( mHandle, end, port, nullptr, size, buf );
 		if ( ret != OMX_ErrorNone ) {
-			printf( "OMX_UseBuffer error 0x%08X ! (state : %d)\n", ret, (int)state() );
+			mDebugCallback( 0, "OMX_UseBuffer error 0x%08X ! (state : %d)\n", ret, (int)state() );
 			*buffer = list;
 			return ret;
 		}
@@ -716,14 +735,14 @@ OMX_ERRORTYPE Component::AllocateBuffers( OMX_BUFFERHEADERTYPE** buffer, int por
 
 void Component::DestroyAll()
 {
-	printf( "Component::DestroyAll()\n" );
+	mDebugCallback( 1, "Component::DestroyAll()\n" );
 
 	// First, stop cameras
 	for( auto comp : mComponents ) {
 		if ( dynamic_cast< Camera* >( comp ) != nullptr ) {
-			printf( "Stopping Camera %s\n", comp->mName.c_str() );
+			mDebugCallback( 1, "Stopping Camera %s\n", comp->mName.c_str() );
 			dynamic_cast< Camera* >( comp )->SetCapturing( false );
-			printf( "Camera stopped\n" );
+			mDebugCallback( 1, "Camera stopped\n" );
 		}
 	}
 	usleep( 1000 * 100 );
@@ -733,22 +752,22 @@ void Component::DestroyAll()
 	std::list< Component* >::reverse_iterator riter = mComponents.rbegin();
 // 	for ( iter = mComponents.rbegin(); iter != mComponents.rend(); iter++ ) {
 	for ( iter = mComponents.begin(); iter != mComponents.end(); iter++ ) {
-		printf( "Stopping component %s\n", (*iter)->mName.c_str() );
+		mDebugCallback( 1, "Stopping component %s\n", (*iter)->mName.c_str() );
 		(*iter)->SetState( Component::StateIdle, false );
 	}
 
 	// Thirdly, reversly remove components
 	for ( riter = mComponents.rbegin(); riter != mComponents.rend(); riter++ ) {
-		printf( "Deleting component %s\n", (*riter)->mName.c_str() );
+		mDebugCallback( 1, "Deleting component %s\n", (*riter)->mName.c_str() );
 		delete (*riter);
-		printf( "Component delete ok\n" );
+		mDebugCallback( 1, "Component delete ok\n" );
 	}
 	mComponents.clear();
 
 	// Finally, free remaining buffers
 	for ( OMX_U8* buf : mAllAllocatedBuffers ) {
 		vcos_free( buf );
-		printf( "Freed static buffer %p\n", buf );
+		mDebugCallback( 1, "Freed static buffer %p\n", buf );
 	}
 	mAllAllocatedBuffers.clear();
 }
@@ -756,7 +775,7 @@ void Component::DestroyAll()
 
 void Component::omx_block_until_port_changed( OMX_U32 nPortIndex, OMX_BOOL bEnabled )
 {
-	printf( "Wating port %d to be %d\n", nPortIndex, bEnabled );
+	if ( mVerbose ) mDebugCallback( 1, "Waiting port %d to be %d\n", nPortIndex, bEnabled );
 	OMX_ERRORTYPE r;
 	OMX_PARAM_PORTDEFINITIONTYPE portdef;
 	OMX_INIT_STRUCTURE(portdef);
@@ -764,7 +783,7 @@ void Component::omx_block_until_port_changed( OMX_U32 nPortIndex, OMX_BOOL bEnab
 	OMX_U32 i = 0;
 	while ( i++ == 0 || portdef.bEnabled != bEnabled ) {
 		if ( ( r = OMX_GetParameter( mHandle, OMX_IndexParamPortDefinition, &portdef ) ) != OMX_ErrorNone ) {
-			printf( "[%s]omx_block_until_port_changed: Failed to get port definition : %d", mName.c_str(), r );
+			mDebugCallback( 0, "[%s]omx_block_until_port_changed: Failed to get port definition : %d", mName.c_str(), r );
 		}
 		if ( portdef.bEnabled != bEnabled ) {
 			usleep(1000);
@@ -775,13 +794,13 @@ void Component::omx_block_until_port_changed( OMX_U32 nPortIndex, OMX_BOOL bEnab
 
 void Component::omx_block_until_state_changed( OMX_STATETYPE state )
 {
-	printf( "Wating state to be %d\n", state );
+	if ( mVerbose ) mDebugCallback( 1, "Waiting state to be %d\n", state );
 	OMX_ERRORTYPE r;
 	OMX_STATETYPE st = (OMX_STATETYPE)-1;
 	OMX_U32 i = 0;
 	while ( i++ == 0 || st != state ) {
 		if ( ( r = OMX_GetState( mHandle, &st ) ) != OMX_ErrorNone ) {
-			printf( "[%s]omx_block_until_state_changed: Failed to get handle state : %d", mName.c_str(), r );
+			mDebugCallback( 0, "[%s]omx_block_until_state_changed: Failed to get handle state : %d", mName.c_str(), r );
 		}
 		if ( st != state ) {
 			usleep(10000);
@@ -829,15 +848,15 @@ OMX_ERRORTYPE Component::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 	for ( auto p : mOutputPorts ) {
 		if ( p.second.buffer == buf ) {
 			if ( mVerbose ) {
-				mDebugCallback( 1, "[%s] Component::FillBufferDone locking...\n", mName.c_str() );
+				mDebugCallback( 1, "[%s] Component::FillBufferDone locking [%d]...\n", mName.c_str(), p.second.nPort );
 			}
 			std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 			p.second.bufferDataAvailable = true;
 			mDataAvailableCond.notify_all();
 			if ( mVerbose ) {
-				mDebugCallback( 1, "[%s] Component::FillBufferDone unlocked\n", mName.c_str() );
+				mDebugCallback( 1, "[%s] Component::FillBufferDone unlocked [%p.bufferDataAvailable:%d]\n", mName.c_str(), p.second.bufferDataAvailable );
 			}
-			break;
+// 			break;
 		}
 	}
 	return OMX_ErrorNone;
@@ -894,6 +913,10 @@ OMX_ERRORTYPE Component::EnablePort( uint16_t port )
 OMX_ERRORTYPE Component::CopyPort( Port* from, Port* to )
 {
 	mDebugCallback( 1, "CopyPort( %s->%d, %s->%d\n", from->pParent->name().c_str(), from->nPort, to->pParent->name().c_str(), to->nPort );
+
+	if ( dynamic_cast<VideoRender*>(to->pParent) != nullptr ) {
+		return OMX_ErrorUnsupportedSetting;
+	}
 	OMX_PARAM_PORTDEFINITIONTYPE def;
 	OMX_INIT_STRUCTURE( def );
 	def.nPortIndex = from->nPort;

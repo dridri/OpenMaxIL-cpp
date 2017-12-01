@@ -37,13 +37,7 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 	if ( mVerbose ) {
 		mDebugCallback( 0, "Camera %d ready\n", mDeviceNumber );
 	}
-/*
-	OMX_PARAM_BRCMDISABLEPROPRIETARYTUNNELSTYPE tunnels;
-	OMX_INIT_STRUCTURE( tunnels );
-	tunnels.bUseBuffers = OMX_TRUE;
-	tunnels.nPortIndex = 70;
-	SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
-*/
+
 // 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
@@ -235,17 +229,30 @@ OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height, uint8_t po
 	OMX_INIT_STRUCTURE( def );
 
 	if ( port == 70 or port == 71 ) {
+		if ( port == 71 ) {
+			port = 70;
+		}
 		def.nPortIndex = 70;
 		GetParameter( OMX_IndexParamPortDefinition, &def );
 		def.format.video.nFrameWidth  = mWidth;
 		def.format.video.nFrameHeight = mHeight;
-// 		def.format.video.nSliceHeight = mHeight / 8;
+		printf( "===============> outputPorts()[%d].bDisableProprietary : %d\n", 70, outputPorts()[70].bDisableProprietary );
+		if ( outputPorts()[70].bDisableProprietary ) {
+			def.format.video.nSliceHeight = mHeight;
+		} else {
+			def.format.video.nSliceHeight = 0;
+		}
 		def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
 		def.format.video.nStride      = 0;
 		SetParameter( OMX_IndexParamPortDefinition, &def );
 
 		GetParameter( OMX_IndexParamPortDefinition, &def );
 		def.nPortIndex = 71;
+		if ( outputPorts()[71].bDisableProprietary ) {
+			def.format.video.nSliceHeight = mHeight;
+		} else {
+			def.format.video.nSliceHeight = 0;
+		}
 		SetParameter( OMX_IndexParamPortDefinition, &def );
 	}
 
@@ -254,7 +261,12 @@ OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height, uint8_t po
 		GetParameter( OMX_IndexParamPortDefinition, &def );
 		def.format.image.nFrameWidth = mWidth;
 		def.format.image.nFrameHeight = mHeight;
-// 		def.format.image.nSliceHeight = mHeight / 8;
+		printf( "===============> outputPorts()[%d].bDisableProprietary : %d\n", port, outputPorts()[port].bDisableProprietary );
+		if ( outputPorts()[port].bDisableProprietary ) {
+			def.format.image.nSliceHeight = mHeight;
+		} else {
+			def.format.image.nSliceHeight = 0;
+		}
 		def.format.image.nStride      = ( def.format.image.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
 		def.format.image.nStride      = 0;
 		SetParameter( OMX_IndexParamPortDefinition, &def );
@@ -477,17 +489,22 @@ OMX_ERRORTYPE Camera::setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid
 {
 	OMX_PARAM_LENSSHADINGOVERRIDETYPE lens_override;
 	OMX_INIT_STRUCTURE( lens_override );
-
+/*
 	if ( mLensShadingAlloc != 0 ) {
+		OMX_ERRORTYPE ret = GetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
+		if ( ret != OMX_ErrorNone ) {
+			mDebugCallback( 0, "Cannot get lens shading override : 0x%08X\n", ret ); fflush(stderr);
+			return ret;
+		}
 		lens_override.bEnabled = OMX_FALSE;
-		OMX_ERRORTYPE ret = SetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
+		ret = SetParameter( OMX_IndexParamBrcmLensShadingOverride, &lens_override );
 		if ( ret != OMX_ErrorNone ) {
 			mDebugCallback( 0, "Cannot disable lens shading override : 0x%08X\n", ret ); fflush(stderr);
 			return ret;
 		}
 		vcsm_free( mLensShadingAlloc );
 	}
-
+*/
 	if ( not mVCSMReady ) {
 		mVCSMReady = true;
 		vcsm_init();
@@ -500,12 +517,14 @@ OMX_ERRORTYPE Camera::setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid
 	lens_override.nHeight = grid_height;
 	lens_override.nRefTransform = 3;
 
-	mLensShadingAlloc = vcsm_malloc( lens_override.nStride * lens_override.nHeight * 4, (char*)"ls_grid" );
-	mDebugCallback( 1, "mLensShadingAlloc : %d (%d)\n", mLensShadingAlloc, lens_override.nStride * lens_override.nHeight * 4 );
-	lens_override.nMemHandleTable = vcsm_vc_hdl_from_hdl( mLensShadingAlloc );
-	mDebugCallback( 1, "lens_override.nMemHandleTable : %d\n", lens_override.nMemHandleTable );
+	if ( mLensShadingAlloc == 0 ) {
+		mLensShadingAlloc = vcsm_malloc( lens_override.nStride * lens_override.nHeight * 4, (char*)"ls_grid" );
+		if ( mVerbose ) mDebugCallback( 1, "mLensShadingAlloc : %d (%d)\n", mLensShadingAlloc, lens_override.nStride * lens_override.nHeight * 4 );
+		lens_override.nMemHandleTable = vcsm_vc_hdl_from_hdl( mLensShadingAlloc );
+		if ( mVerbose ) mDebugCallback( 1, "lens_override.nMemHandleTable : %d\n", lens_override.nMemHandleTable );
+	}
 	void* grid = vcsm_lock( mLensShadingAlloc );
-	mDebugCallback( 1, "grid : %p\n", grid );
+	if ( mVerbose ) mDebugCallback( 1, "grid : %p\n", grid );
 	memcpy( grid, ls_grid, lens_override.nStride * lens_override.nHeight * 4 );
 	vcsm_unlock_hdl( mLensShadingAlloc );
 
@@ -547,6 +566,26 @@ const uint32_t Camera::framerate()
 	}
 
 	return rate;
+}
+
+
+const int32_t Camera::width( uint8_t port )
+{
+	OMX_PARAM_PORTDEFINITIONTYPE def;
+	OMX_INIT_STRUCTURE( def );
+	def.nPortIndex = port;
+	GetParameter( OMX_IndexParamPortDefinition, &def );
+	return ( port == 72 ) ? def.format.image.nFrameWidth : def.format.video.nFrameWidth;
+}
+
+
+const int32_t Camera::height( uint8_t port )
+{
+	OMX_PARAM_PORTDEFINITIONTYPE def;
+	OMX_INIT_STRUCTURE( def );
+	def.nPortIndex = port;
+	GetParameter( OMX_IndexParamPortDefinition, &def );
+	return ( port == 72 ) ? def.format.image.nFrameHeight : def.format.video.nFrameHeight;
 }
 
 

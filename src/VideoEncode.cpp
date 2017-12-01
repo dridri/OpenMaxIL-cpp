@@ -14,6 +14,7 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 	, mBufferPtr( nullptr )
 	, mDataAvailable( false )
 {
+/*	//TODO : to use with splitter
 	OMX_PARAM_PORTDEFINITIONTYPE def;
 	OMX_INIT_STRUCTURE( def );
 	def.nPortIndex = 201;
@@ -27,6 +28,12 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 	def.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
 	def.format.video.nBitrate = bitrate_kbps * 1024;
 	SetParameter( OMX_IndexParamPortDefinition, &def );
+*/
+
+	OMX_CONFIG_BOOLEANTYPE immutableInput;
+	OMX_INIT_STRUCTURE( immutableInput );
+	immutableInput.bEnabled = OMX_TRUE;
+	SetParameter( OMX_IndexParamBrcmImmutableInput, &immutableInput );
 
 	OMX_VIDEO_PARAM_PORTFORMATTYPE pfmt;
 	OMX_INIT_STRUCTURE( pfmt );
@@ -48,16 +55,16 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 	bitrate.nTargetBitrate = bitrate_kbps * 1024;
 	SetParameter( OMX_IndexParamVideoBitrate, &bitrate );
 
-	OMX_CONFIG_BOOLEANTYPE immutableInput;
-	OMX_INIT_STRUCTURE( immutableInput );
-	immutableInput.bEnabled = OMX_TRUE;
-	SetParameter( OMX_IndexParamBrcmImmutableInput, &immutableInput );
-
 	if ( coding_type == CodingAVC ) {
 		OMX_CONFIG_BOOLEANTYPE headerOnOpen;
 		OMX_INIT_STRUCTURE( headerOnOpen );
 		headerOnOpen.bEnabled = OMX_TRUE;
 		SetConfig( OMX_IndexParamBrcmHeaderOnOpen, &headerOnOpen );
+
+		OMX_CONFIG_BOOLEANTYPE lowLatency;
+		OMX_INIT_STRUCTURE( lowLatency );
+		lowLatency.bEnabled = OMX_TRUE;
+		SetConfig( OMX_IndexConfigBrcmVideoH264LowLatency, &lowLatency );
 
 		if ( live_mode ) {
 			setIDRPeriod( 1 );
@@ -68,13 +75,20 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 			MBmode.nU32 = 4; //1=4x4, 2=8x8, 4=16x16
 			SetConfig( OMX_IndexConfigBrcmVideoH264IntraMBMode, &MBmode );
 	*/
-	/*
+	
+			OMX_VIDEO_CONFIG_AVCINTRAPERIOD idr;
+			OMX_INIT_STRUCTURE( idr );
+			idr.nPortIndex = 201;
+			GetParameter( OMX_IndexConfigVideoAVCIntraPeriod, &idr );
+			idr.nIDRPeriod = 10;
+			idr.nPFrames = 10;
+			SetParameter( OMX_IndexConfigVideoAVCIntraPeriod, &idr );
 			OMX_CONFIG_PORTBOOLEANTYPE inlinePPSSPS;
 			OMX_INIT_STRUCTURE( inlinePPSSPS );
 			inlinePPSSPS.nPortIndex = 201;
 			inlinePPSSPS.bEnabled = OMX_TRUE;
 			SetParameter( OMX_IndexParamBrcmVideoAVCInlineHeaderEnable, &inlinePPSSPS );
-	*/
+	
 	/*
 			OMX_CONFIG_PORTBOOLEANTYPE inlineVectors;
 			OMX_INIT_STRUCTURE( inlineVectors );
@@ -82,10 +96,6 @@ VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, 
 			inlineVectors.bEnabled = OMX_TRUE;
 			SetParameter( OMX_IndexParamBrcmVideoAVCInlineVectorsEnable, &inlineVectors );
 	*/
-			OMX_CONFIG_BOOLEANTYPE lowLatency;
-			OMX_INIT_STRUCTURE( lowLatency );
-			lowLatency.bEnabled = OMX_TRUE;
-			SetConfig( OMX_IndexConfigBrcmVideoH264LowLatency, &lowLatency );
 
 			OMX_VIDEO_EEDE_ENABLE eede_enable;
 			OMX_INIT_STRUCTURE( eede_enable );
@@ -304,6 +314,9 @@ OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 	}
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 	if ( mBuffer->nFilledLen > 0 and mBuffer->nFilledLen < 32 and mHeaders.find( mBuffer->nFilledLen ) == mHeaders.end() ) {
+		if ( mVerbose ) {
+			mDebugCallback( 1, "VideoEncode::FillBufferDone() new header (%d)\n", mBuffer->nFilledLen );
+		}
 		uint8_t* data = (uint8_t*)malloc( mBuffer->nFilledLen );
 		memcpy( data, mBufferPtr, mBuffer->nFilledLen );
 		mHeaders.emplace( std::make_pair( mBuffer->nFilledLen, data ) );
@@ -344,7 +357,7 @@ int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 	uint32_t datalen = 0;
 
 	if ( mVerbose ) {
-		mDebugCallback( 0, "VideoEncode::getOutputData() locking...\n" );
+		mDebugCallback( 2, "VideoEncode::getOutputData() locking...\n" );
 	}
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 
@@ -356,7 +369,7 @@ int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 		mDataAvailable = false;
 	} else if ( wait ) {
 		if ( mVerbose ) {
-			mDebugCallback( 0, "VideoEncode::getOutputData() : Waiting...\n" );
+			mDebugCallback( 2, "VideoEncode::getOutputData() : Waiting...\n" );
 		}
 		mDataAvailableCond.wait( locker );
 		if ( pBuf ) {
@@ -367,19 +380,19 @@ int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 	} else {
 		locker.unlock();
 		if ( mVerbose ) {
-			mDebugCallback( 0, "VideoEncode::getOutputData() unlocked\n" );
+			mDebugCallback( 2, "VideoEncode::getOutputData() unlocked\n" );
 		}
 		return OMX_ErrorOverflow;
 	}
 
 	locker.unlock();
 	if ( mVerbose ) {
-		mDebugCallback( 0, "VideoEncode::getOutputData() unlocked\n" );
+		mDebugCallback( 2, "VideoEncode::getOutputData() unlocked\n" );
 	}
 
 	if ( mBuffer ) {
 		if ( mVerbose ) {
-			mDebugCallback( 0, "VideoEncode::getOutputData() : mHandle->FillThisBuffer()\n" );
+			mDebugCallback( 2, "VideoEncode::getOutputData() : mHandle->FillThisBuffer()\n" );
 		}
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, mBuffer );
 		if ( err != OMX_ErrorNone ) {

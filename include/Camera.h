@@ -104,6 +104,8 @@ public:
 	const uint32_t brightness();
 	const int32_t contrast();
 	const int32_t saturation();
+	const int32_t width( uint8_t port = 71 );
+	const int32_t height( uint8_t port = 71 );
 
 protected:
 	virtual OMX_ERRORTYPE EventHandler( OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2, OMX_PTR eventdata );
