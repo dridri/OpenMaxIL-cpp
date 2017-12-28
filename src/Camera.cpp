@@ -230,12 +230,14 @@ OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height, uint8_t po
 
 	if ( port == 70 or port == 71 ) {
 		if ( port == 71 ) {
-			port = 70;
+// 			port = 70;
 		}
 		def.nPortIndex = 70;
 		GetParameter( OMX_IndexParamPortDefinition, &def );
 		def.format.video.nFrameWidth  = mWidth;
 		def.format.video.nFrameHeight = mHeight;
+// 		def.format.video.nFrameWidth  = std::min( mWidth, 1640u );
+// 		def.format.video.nFrameHeight = std::min( mHeight, 1232u );
 		printf( "===============> outputPorts()[%d].bDisableProprietary : %d\n", 70, outputPorts()[70].bDisableProprietary );
 		if ( outputPorts()[70].bDisableProprietary ) {
 			def.format.video.nSliceHeight = mHeight;
@@ -399,9 +401,9 @@ int Camera::HighSpeedMode( uint32_t sensor_mode )
 	pool.nInputStillsWidth = 3240;
 	pool.nInputStillsHeight = 2464;
 	pool.eInputStillsType = OMX_COLOR_FormatYUV420PackedPlanar;
-	if ( SetParameter( OMX_IndexParamCameraImagePool, &pool ) != OMX_ErrorNone ) {
-		exit(0);
-	}
+// 	if ( SetParameter( OMX_IndexParamCameraImagePool, &pool ) != OMX_ErrorNone ) {
+// 		exit(0);
+// 	}
 
 	OMX_PARAM_CAMERACAPTUREMODETYPE captureMode;
 	OMX_INIT_STRUCTURE( captureMode );
@@ -485,7 +487,7 @@ OMX_ERRORTYPE Camera::disableLensShading()
 }
 
 
-OMX_ERRORTYPE Camera::setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid_width, uint32_t grid_height, const uint8_t* ls_grid )
+OMX_ERRORTYPE Camera::setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid_width, uint32_t grid_height, uint32_t transform, const uint8_t* ls_grid )
 {
 	OMX_PARAM_LENSSHADINGOVERRIDETYPE lens_override;
 	OMX_INIT_STRUCTURE( lens_override );
@@ -515,7 +517,7 @@ OMX_ERRORTYPE Camera::setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid
 	lens_override.nWidth = grid_width;
 	lens_override.nStride = grid_width;
 	lens_override.nHeight = grid_height;
-	lens_override.nRefTransform = 3;
+	lens_override.nRefTransform = transform;
 
 	if ( mLensShadingAlloc == 0 ) {
 		mLensShadingAlloc = vcsm_malloc( lens_override.nStride * lens_override.nHeight * 4, (char*)"ls_grid" );

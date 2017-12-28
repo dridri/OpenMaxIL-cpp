@@ -97,7 +97,7 @@ public:
 	OMX_ERRORTYPE setRotation( int32_t angle_degrees );
 
 	OMX_ERRORTYPE disableLensShading();
-	OMX_ERRORTYPE setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid_width, uint32_t grid_height, const uint8_t* ls_grid );
+	OMX_ERRORTYPE setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid_width, uint32_t grid_height, uint32_t transform, const uint8_t* ls_grid );
 
 	const uint8_t sensorMode();
 	const uint32_t framerate();
