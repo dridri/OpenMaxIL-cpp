@@ -49,8 +49,8 @@ public:
 		ImageFilterOilPaint,
 		ImageFilterHatch,
 		ImageFilterGpen,
-		ImageFilterAntialias, 
-		ImageFilterDeRing,       
+		ImageFilterAntialias,
+		ImageFilterDeRing,
 		ImageFilterSolarize,
 		ImageFilterKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
 		ImageFilterVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
@@ -92,6 +92,7 @@ public:
 	OMX_ERRORTYPE setWhiteBalanceControl( WhiteBalControl value );
 	OMX_ERRORTYPE setExposureControl( ExposureControl value );
 	OMX_ERRORTYPE setExposureValue( uint16_t exposure_compensation, float aperture, uint32_t iso_sensitivity, uint32_t shutter_speed_us );
+	OMX_ERRORTYPE setImageFilter( ImageFilter filter );
 	OMX_ERRORTYPE setFrameStabilisation( bool enabled );
 	OMX_ERRORTYPE setMirror( bool hrzn, bool vert );
 	OMX_ERRORTYPE setRotation( int32_t angle_degrees );
