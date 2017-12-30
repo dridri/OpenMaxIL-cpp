@@ -28,8 +28,8 @@ set( CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -Wall -std=gnu11" )
 set( CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -Wall -std=gnu11" )
 
 include_directories( ${CMAKE_BINARY_DIR} )
-include_directories( ${CMAKE_SOURCE_DIR} )
-include_directories( ${CMAKE_SOURCE_DIR}/include )
+include_directories( ${CMAKE_CURRENT_SOURCE_DIR} )
+include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
 include_directories( /opt/vc/include )
 
 set( SOURCES
@@ -37,6 +37,7 @@ set( SOURCES
 	src/Camera.cpp
 	src/NullSink.cpp
 	src/Resize.cpp
+	src/ImageEncode.cpp
 	src/VideoSplitter.cpp
 	src/VideoRender.cpp
 	src/VideoEncode.cpp

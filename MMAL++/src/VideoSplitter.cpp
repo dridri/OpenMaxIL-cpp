@@ -4,7 +4,7 @@ using namespace MMAL;
 
 
 VideoSplitter::VideoSplitter( bool verbose )
-	: Component( "vc.ril.video_splitter", { 0 }, { 0, 1, 2, 3 }, verbose )
+	: Component( "vc.ril.video_splitter", { PortInit( 0, Video ) }, { PortInit( 0, Video ), PortInit( 1, Video ), PortInit( 2, Video ), PortInit( 3, Video ) }, verbose )
 {
 }
 

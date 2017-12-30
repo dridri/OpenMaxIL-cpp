@@ -3,7 +3,7 @@
 using namespace MMAL;
 
 VideoRender::VideoRender( uint32_t offset_x, uint32_t offset_y, uint32_t width, uint32_t height, bool verbose )
-	: Component( "vc.ril.video_render", { 0 }, std::vector<uint8_t>(), verbose )
+	: Component( "vc.ril.video_render", { PortInit( 0, Video ) }, std::vector< PortInit >(), verbose )
 {
 	MMAL_DISPLAYREGION_T param;
 	param.hdr.id = MMAL_PARAMETER_DISPLAYREGION;

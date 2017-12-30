@@ -28,14 +28,22 @@ public:
 		CodingMVC = MMAL_ENCODING_MVC,
 	} CodingType;
 
-	VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type = CodingAVC, bool verbose = false );
+	VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type = CodingAVC, bool live_mode = false, bool verbose = false );
 	~VideoEncode();
+
+	int setFramerate( uint32_t fps );
+	int setInlinePPSSPS( bool en );
+	void RequestIFrame();
 
 	virtual int SetState( const State& st );
 	int SetupTunnel( Component* next, uint8_t port_input = 0 );
 
-	const bool dataAvailable() const;
-	uint32_t getOutputData( uint8_t* pBuf, bool wait = true );
+	const bool dataAvailable( bool wait = false );
+	void fillBuffer();
+	int32_t getOutputData( uint8_t* pBuf, bool wait = true );
+	const std::map< uint32_t, uint8_t* >& headers() const;
+	uint8_t* buffer() const;
+	uint32_t bufferLength() const;
 
 	int setIDRPeriod( uint32_t period );
 

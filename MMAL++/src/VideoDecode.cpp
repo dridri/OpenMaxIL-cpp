@@ -5,7 +5,7 @@
 using namespace MMAL;
 
 VideoDecode::VideoDecode( uint32_t fps, const CodingType& coding_type, bool verbose )
-	: Component( "vc.ril.video_decode", { 0 }, { 0 }, verbose )
+	: Component( "vc.ril.video_decode", { PortInit( 0, Video ) }, { PortInit( 0, Video ) }, verbose )
 	, mNeedData( false )
 {
 	MMAL_ES_FORMAT_T* format_in = mHandle->input[0]->format;

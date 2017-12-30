@@ -26,8 +26,8 @@ static void camera_control_callback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* bu
 }
 
 
-Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool high_speed, bool verbose )
-	: Component( "vc.ril.camera", std::vector<uint8_t>(), { 0, 1, 2 }, verbose )
+Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool high_speed, uint32_t sensor_mode, bool verbose )
+	: Component( "vc.ril.camera", std::vector< PortInit >(), { PortInit( 0, Video ), PortInit( 1, Video ), PortInit( 2, Image ) }, verbose )
 	, mDeviceNumber( device_number )
 	, mWidth( width )
 	, mHeight( height )

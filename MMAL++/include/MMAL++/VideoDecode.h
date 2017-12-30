@@ -28,20 +28,36 @@ public:
 	} CodingType;
 
 	VideoDecode( uint32_t fps, const CodingType& coding_type = CodingAVC, bool verbose = false );
+	VideoDecode( uint32_t width, uint32_t height, uint32_t fps, const CodingType& coding_type = CodingAVC, bool verbose = false );
 	~VideoDecode();
+	void setRGB565Mode( bool en );
 
 	virtual int SetState( const State& st );
 	int SetupTunnel( Component* next, uint8_t port_input = 0 );
 
+	const bool valid();
+	const uint32_t width();
+	const uint32_t height();
+
 	const bool needData() const;
 	void fillInput( uint8_t* pBuf, uint32_t len, bool corrupted = false );
+
+	const bool dataAvailable() const;
+	int32_t getOutputData( uint8_t* pBuf, bool wait = true );
 
 protected:
 	void ControlCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* buffer );
 	void InputBufferCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* buffer );
+	void OutputBufferCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T* buffer );
 
 	MMAL_POOL_T* mInputPool;
+	MMAL_POOL_T* mOutputPool;
 	bool mNeedData;
+	std::mutex mNeedDataMutex;
+	std::condition_variable mNeedDataCond;
+	bool mDataAvailable;
+	std::mutex mDataAvailableMutex;
+	std::condition_variable mDataAvailableCond;
 };
 
 } // namespace MMAL

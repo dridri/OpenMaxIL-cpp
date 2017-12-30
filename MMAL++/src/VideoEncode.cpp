@@ -4,8 +4,8 @@
 
 using namespace MMAL;
 
-VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, bool verbose )
-	: Component( "vc.ril.video_encode", { 0 }, { 0 }, verbose )
+VideoEncode::VideoEncode( uint32_t bitrate_kbps, const CodingType& coding_type, bool live_mode, bool verbose )
+	: Component( "vc.ril.video_encode", { PortInit( 0, Video ) }, { PortInit( 0, Video ) }, verbose )
 {
 	mmal_format_copy( mHandle->output[0]->format, mHandle->input[0]->format );
 	mHandle->output[0]->format->encoding = (MMAL_FOURCC_T)coding_type;
@@ -103,13 +103,21 @@ void VideoEncode::OutputBufferCallback( MMAL_PORT_T* port, MMAL_BUFFER_HEADER_T*
 }
 
 
-const bool VideoEncode::dataAvailable() const
+const bool VideoEncode::dataAvailable( bool wait )
 {
+	if ( not wait or mBuffers.size() > 0 ) {
+		return ( mBuffers.size() > 0 );
+	}
+
+	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
+	mDataAvailableCond.wait( locker );
+	locker.unlock();
+
 	return ( mBuffers.size() > 0 );
 }
 
 
-uint32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
+int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 {
 	uint32_t datalen = 0;
 

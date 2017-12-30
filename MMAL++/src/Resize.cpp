@@ -3,7 +3,7 @@
 using namespace MMAL;
 
 Resize::Resize( uint32_t width, uint32_t height, bool verbose )
-	: Component( "vc.ril.resize", { 0 }, { 0 }, verbose )
+	: Component( "vc.ril.resize", { PortInit( 0, (PortType)(Image | Video) ) }, { PortInit( 0, (PortType)(Image | Video) ) }, verbose )
 	, mWidth( width )
 	, mHeight( height )
 {

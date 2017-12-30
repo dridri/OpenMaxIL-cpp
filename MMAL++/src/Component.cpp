@@ -12,7 +12,7 @@ using namespace MMAL;
 bool Component::mCoreReady = false;
 std::list< Component* > Component::mComponents;
 
-Component::Component( const std::string& name, const std::vector< uint8_t >& input_ports, const std::vector< uint8_t >& output_ports, bool verbose )
+Component::Component( const std::string& name, const std::vector< PortInit >& input_ports, const std::vector< PortInit >& output_ports, bool verbose )
 	: mName( name )
 	, mVerbose( verbose )
 	, mHandle( nullptr )
@@ -24,19 +24,25 @@ Component::Component( const std::string& name, const std::vector< uint8_t >& inp
 
 	mComponents.emplace_back( this );
 
-	for ( uint8_t n : input_ports ) {
+	for ( PortInit n : input_ports ) {
 		Port p;
-		p.nPort = n;
+		p.pParent = this;
+		p.nPort = n.id;
+		p.type = n.type;
 		p.bEnabled = false;
 		p.bTunneled = false;
-		mInputPorts.insert( std::make_pair( n, p ) );
+		p.bDisableProprietary = false;
+		mInputPorts.insert( std::make_pair( n.id, p ) );
 	}
-	for ( uint8_t n : output_ports ) {
+	for ( PortInit n : output_ports ) {
 		Port p;
-		p.nPort = n;
+		p.pParent = this;
+		p.nPort = n.id;
+		p.type = n.type;
 		p.bEnabled = false;
 		p.bTunneled = false;
-		mOutputPorts.insert( std::make_pair( n, p ) );
+		p.bDisableProprietary = false;
+		mOutputPorts.insert( std::make_pair( n.id, p ) );
 	}
 
 	InitComponent();
@@ -73,7 +79,7 @@ int Component::InitComponent()
 }
 
 
-int Component::SetupTunnel( uint8_t port_output, Component* next, uint8_t port_input )
+int Component::SetupTunnel( uint16_t port_output, Component* next, uint16_t port_input, Port* port_copy )
 {
 	MMAL_STATUS_T status;
 	MMAL_CONNECTION_T* connection;
@@ -157,7 +163,7 @@ MMAL_STATUS_T Component::FillPortBuffer( MMAL_PORT_T* port, MMAL_POOL_T* pool )
 }
 
 
-int Component::SetState( const Component::State& st )
+int Component::SetState( const Component::State& st, bool wait )
 {
 	MMAL_STATUS_T status;
 	if ( st == StateExecuting ) {
