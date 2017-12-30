@@ -66,9 +66,9 @@ Camera::~Camera()
 }
 
 
-OMX_ERRORTYPE Camera::SetState( const Component::State& st )
+OMX_ERRORTYPE Camera::SetState( const Component::State& st, bool wait )
 {
-	OMX_ERRORTYPE err = IL::Component::SetState(st);
+	OMX_ERRORTYPE err = IL::Component::SetState( st, wait );
 	return err;
 }
 
@@ -196,7 +196,7 @@ int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 	setSharpness( 0 );
 	setWhiteBalanceControl( WhiteBalControlAuto );
 	setExposureControl( ExposureControlAuto );
-	setExposureValue( 0, 2.8f, 0, 0 );
+	setExposureValue( ExposureMeteringModeAverage, 0, 0, 0 );
 	setFrameStabilisation( true );
 
 	return 0;
@@ -690,13 +690,14 @@ OMX_ERRORTYPE Camera::setExposureControl( ExposureControl value )
 }
 
 
-OMX_ERRORTYPE Camera::setExposureValue( uint16_t exposure_compensation, float aperture, uint32_t iso_sensitivity, uint32_t shutter_speed_us )
+OMX_ERRORTYPE Camera::setExposureValue( ExposureMeteringMode metering, uint16_t exposure_compensation, uint32_t iso_sensitivity, uint32_t shutter_speed_us )
 {
 	OMX_CONFIG_EXPOSUREVALUETYPE exposure_value;
 	OMX_INIT_STRUCTURE( exposure_value );
 	exposure_value.nPortIndex = OMX_ALL;
+	exposure_value.eMetering = (OMX_METERINGTYPE)metering;
 	exposure_value.xEVCompensation = exposure_compensation << 16;
-	exposure_value.nApertureFNumber = (uint32_t)( aperture * 655536.0f );
+	exposure_value.nApertureFNumber = (uint32_t)( 2.8f * 655536.0f );
 	exposure_value.bAutoSensitivity = (OMX_BOOL)( iso_sensitivity == 0 );
 	exposure_value.nSensitivity = iso_sensitivity;
 	exposure_value.bAutoShutterSpeed = (OMX_BOOL)( shutter_speed_us == 0 );

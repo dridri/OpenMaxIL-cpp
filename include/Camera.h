@@ -2,6 +2,11 @@
 
 #include "Component.h"
 
+/*
+   If you do not use the -ex option the shutter speed will never be longer than 1/8, with -ex night it will never be longer than 1/4 while with -ex verylong it will go to 1/2
+*/
+
+
 namespace IL {
 class Camera : public IL::Component
 {
@@ -41,6 +46,15 @@ public:
 	} ExposureControl;
 
 	typedef enum {
+		ExposureMeteringModeAverage,     // 25% spot - Center-weighted average metering.
+		ExposureMeteringModeSpot,        // 10% spot - Spot (partial) metering.
+		ExposureMeteringModeMatrix,      // Matrix or evaluative metering.
+		ExposureMeteringKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
+		ExposureMeteringVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
+		ExposureMeteringModeBacklit,     // 30% spot
+	} ExposureMeteringMode;
+
+	typedef enum {
 		ImageFilterNone,
 		ImageFilterNoise,
 		ImageFilterEmboss,
@@ -76,7 +90,7 @@ public:
 
 	Camera( uint32_t width, uint32_t height, uint32_t device_number = 0, bool high_speed = false, uint32_t sensor_mode = 0, bool verbose = false );
 	~Camera();
-	virtual OMX_ERRORTYPE SetState( const State& st );
+	virtual OMX_ERRORTYPE SetState( const State& st, bool wait = true );
 	OMX_ERRORTYPE SetCapturing( bool capturing, uint8_t port = 71 );
 	OMX_ERRORTYPE SetupTunnelPreview( Component* next, uint8_t port_input = 0 );
 	OMX_ERRORTYPE SetupTunnelVideo( Component* next, uint8_t port_input = 0 );
@@ -91,7 +105,7 @@ public:
 	OMX_ERRORTYPE setContrast( int32_t value );
 	OMX_ERRORTYPE setWhiteBalanceControl( WhiteBalControl value );
 	OMX_ERRORTYPE setExposureControl( ExposureControl value );
-	OMX_ERRORTYPE setExposureValue( uint16_t exposure_compensation, float aperture, uint32_t iso_sensitivity, uint32_t shutter_speed_us );
+	OMX_ERRORTYPE setExposureValue( ExposureMeteringMode metering = ExposureMeteringModeAverage, uint16_t exposure_compensation = 0, uint32_t iso_sensitivity = 0, uint32_t shutter_speed_us = 0 );
 	OMX_ERRORTYPE setImageFilter( ImageFilter filter );
 	OMX_ERRORTYPE setFrameStabilisation( bool enabled );
 	OMX_ERRORTYPE setMirror( bool hrzn, bool vert );
