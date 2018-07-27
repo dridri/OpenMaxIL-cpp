@@ -42,7 +42,6 @@ public:
 		ExposureControlNightWithPreview,
 		ExposureControlAntishake,
 		ExposureControlFireworks,
-		ExposureControlMax = 0x7FFFFFFF
 	} ExposureControl;
 
 	typedef enum {
