@@ -217,7 +217,25 @@ int Camera::setWhiteBalanceControl( WhiteBalControl value )
 
 int Camera::setExposureControl( ExposureControl value )
 {
-	return 0;
+	// Setup exposure mode
+	MMAL_PARAM_EXPOSUREMODE_T mode;
+	if(value == ExposureControlOff) mode = MMAL_PARAM_EXPOSUREMODE_OFF;
+	else if(value == ExposureControlAuto) mode = MMAL_PARAM_EXPOSUREMODE_AUTO;
+	else if(value == ExposureControlNight) mode = MMAL_PARAM_EXPOSUREMODE_NIGHT;
+	else if(value == ExposureControlNightWithPreview) mode = MMAL_PARAM_EXPOSUREMODE_NIGHTPREVIEW;
+	else if(value == ExposureControlBackLight) mode = MMAL_PARAM_EXPOSUREMODE_BACKLIGHT;
+	else if(value == ExposureControlSpotLight) mode = MMAL_PARAM_EXPOSUREMODE_SPOTLIGHT;
+	else if(value == ExposureControlSports) mode = MMAL_PARAM_EXPOSUREMODE_SPORTS;
+	else if(value == ExposureControlSnow) mode = MMAL_PARAM_EXPOSUREMODE_SNOW;
+	else if(value == ExposureControlBeach) mode = MMAL_PARAM_EXPOSUREMODE_BEACH;
+	else if(value == ExposureControlVeryLong) mode = MMAL_PARAM_EXPOSUREMODE_VERYLONG;
+	else if(value == ExposureControlFixedFps) mode = MMAL_PARAM_EXPOSUREMODE_FIXEDFPS;
+	else if(value == ExposureControlAntishake) mode = MMAL_PARAM_EXPOSUREMODE_ANTISHAKE;
+	else if(value == ExposureControlFireworks) mode = MMAL_PARAM_EXPOSUREMODE_FIREWORKS;
+	else error("Invalid exposure mode");
+
+	MMAL_PARAMETER_EXPOSUREMODE_T exp_mode = {{MMAL_PARAMETER_EXPOSURE_MODE,sizeof(exp_mode)}, mode};
+	return mmal_port_parameter_set( mHandle->control, &exp_mode.hdr );
 }
 
 
