@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include "Camera.h"
+#include <cmath>
 #include <bcm_host.h>
 #include <interface/vcsm/user-vcsm.h>
 #include <IL/OMX_Index.h>
@@ -615,6 +616,26 @@ const int32_t Camera::saturation()
 }
 
 
+OMX_ERRORTYPE Camera::lastSettings( Camera::Settings* settings )
+{
+
+	OMX_CONFIG_CAMERASETTINGSTYPE omx_settings;
+	OMX_INIT_STRUCTURE( omx_settings );
+	omx_settings.nPortIndex = 71;
+	OMX_ERRORTYPE err = GetConfig( OMX_IndexConfigCameraSettings, &omx_settings );
+	if ( err == OMX_ErrorNone ) {
+		settings->nExposure = omx_settings.nExposure;
+		settings->nAnalogGain = omx_settings.nAnalogGain;
+		settings->nDigitalGain = omx_settings.nDigitalGain;
+		settings->nLux = omx_settings.nLux;
+		settings->nRedGain = omx_settings.nRedGain;
+		settings->nBlueGain = omx_settings.nBlueGain;
+		settings->nFocusPosition = omx_settings.nFocusPosition;
+	}
+	return err;
+}
+
+
 OMX_ERRORTYPE Camera::setFramerate( uint32_t fps )
 {
 	OMX_CONFIG_FRAMERATETYPE framerate;
@@ -764,4 +785,17 @@ OMX_ERRORTYPE Camera::setRotation( int32_t angle_degrees )
 
 	rot.nPortIndex = 71;
 	return SetConfig( OMX_IndexConfigCommonRotate, &rot );
+}
+
+
+OMX_ERRORTYPE Camera::setInputCrop( float left, float top, float width, float height )
+{
+	OMX_CONFIG_INPUTCROPTYPE crop;
+	OMX_INIT_STRUCTURE(crop);
+	crop.nPortIndex = OMX_ALL;
+	crop.xLeft = ( ((uint32_t)left) << 16 ) | ( (uint32_t)( ( left - std::floor(left) ) * 65535.0f ) );
+	crop.xTop = ( ((uint32_t)top) << 16 ) | ( (uint32_t)( ( top - std::floor(top) ) * 65535.0f ) );
+	crop.xWidth = ( ((uint32_t)width) << 16 ) | ( (uint32_t)( ( width - std::floor(width) ) * 65535.0f ) );
+	crop.xHeight = ( ((uint32_t)height) << 16 ) | ( (uint32_t)( ( height - std::floor(height) ) * 65535.0f ) );
+	return SetConfig( OMX_IndexConfigInputCropPercentages, &crop );
 }

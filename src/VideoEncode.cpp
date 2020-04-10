@@ -310,12 +310,12 @@ const std::map< uint32_t, uint8_t* >& VideoEncode::headers() const
 OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 {
 	if ( mVerbose ) {
-		mDebugCallback( 1, "VideoEncode::FillBufferDone() locking...\n" );
+		mDebugCallback( 1, "[%llu] VideoEncode::FillBufferDone(%d) locking...\n", ticks64(), mBuffer->nFilledLen );
 	}
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 	if ( mBuffer->nFilledLen > 0 and mBuffer->nFilledLen < 32 and mHeaders.find( mBuffer->nFilledLen ) == mHeaders.end() ) {
 		if ( mVerbose ) {
-			mDebugCallback( 1, "VideoEncode::FillBufferDone() new header (%d)\n", mBuffer->nFilledLen );
+			mDebugCallback( 1, "[%llu] VideoEncode::FillBufferDone() new header (%d)\n", ticks64(), mBuffer->nFilledLen );
 		}
 		uint8_t* data = (uint8_t*)malloc( mBuffer->nFilledLen );
 		memcpy( data, mBufferPtr, mBuffer->nFilledLen );
@@ -324,7 +324,7 @@ OMX_ERRORTYPE VideoEncode::FillBufferDone( OMX_BUFFERHEADERTYPE* buf )
 	mDataAvailable = true;
 	mDataAvailableCond.notify_all();
 	if ( mVerbose ) {
-		mDebugCallback( 1, "VideoEncode::FillBufferDone() unlocked\n" );
+		mDebugCallback( 1, "[%llu] VideoEncode::FillBufferDone() unlocked\n", ticks64() );
 	}
 	return OMX_ErrorNone;
 }
@@ -356,8 +356,9 @@ int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 {
 	uint32_t datalen = 0;
 
+	uint64_t ticks = ticks64();
 	if ( mVerbose ) {
-		mDebugCallback( 2, "VideoEncode::getOutputData() locking...\n" );
+		mDebugCallback( 2, "[%llu] VideoEncode::getOutputData() locking... (%llu)\n", ticks64(), ticks64() - ticks );
 	}
 	std::unique_lock<std::mutex> locker( mDataAvailableMutex );
 
@@ -369,7 +370,7 @@ int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 		mDataAvailable = false;
 	} else if ( wait ) {
 		if ( mVerbose ) {
-			mDebugCallback( 2, "VideoEncode::getOutputData() : Waiting...\n" );
+			mDebugCallback( 2, "[%llu] VideoEncode::getOutputData() : Waiting... (%llu)\n", ticks64(), ticks64() - ticks );
 		}
 		mDataAvailableCond.wait( locker );
 		if ( pBuf ) {
@@ -380,21 +381,24 @@ int32_t VideoEncode::getOutputData( uint8_t* pBuf, bool wait )
 	} else {
 		locker.unlock();
 		if ( mVerbose ) {
-			mDebugCallback( 2, "VideoEncode::getOutputData() unlocked\n" );
+			mDebugCallback( 2, "[%llu] VideoEncode::getOutputData() unlocked (overflow) (%llu)\n", ticks64(), ticks64() - ticks );
 		}
 		return OMX_ErrorOverflow;
 	}
 
 	locker.unlock();
 	if ( mVerbose ) {
-		mDebugCallback( 2, "VideoEncode::getOutputData() unlocked\n" );
+		mDebugCallback( 2, "[%llu] VideoEncode::getOutputData() unlocked (%llu)\n", ticks64(), ticks64() - ticks );
 	}
 
 	if ( mBuffer ) {
 		if ( mVerbose ) {
-			mDebugCallback( 2, "VideoEncode::getOutputData() : mHandle->FillThisBuffer()\n" );
+			mDebugCallback( 2, "VideoEncode::getOutputData() : mHandle->FillThisBuffer() (%llu)\n", ticks64() - ticks );
 		}
 		OMX_ERRORTYPE err = ((OMX_COMPONENTTYPE*)mHandle)->FillThisBuffer( mHandle, mBuffer );
+		if ( mVerbose ) {
+			mDebugCallback( 2, "VideoEncode::getOutputData() : end (%llu)\n", ticks64() - ticks );
+		}
 		if ( err != OMX_ErrorNone ) {
 			return err;
 		}

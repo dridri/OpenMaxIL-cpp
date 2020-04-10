@@ -9,7 +9,7 @@ using namespace IL;
 VideoSplitter::VideoSplitter( bool verbose )
 	: Component( "OMX.broadcom.video_splitter", { PortInit( 250, Video ) }, { PortInit( 251, Video ), PortInit( 252, Video ), PortInit( 253, Video ), PortInit( 254, Video ) }, verbose )
 {
-
+/*
 	OMX_CONFIG_BRCMUSEPROPRIETARYCALLBACKTYPE propCb;
 	OMX_INIT_STRUCTURE( propCb );
 	propCb.nPortIndex = 250;
@@ -27,6 +27,7 @@ VideoSplitter::VideoSplitter( bool verbose )
 	SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
 	tunnels.nPortIndex = 254;
 	SetParameter( OMX_IndexParamBrcmDisableProprietaryTunnels, &tunnels );
+*/
 /*
 	OMX_PARAM_IMAGEPOOLSIZETYPE pool;
 	OMX_INIT_STRUCTURE( pool );
