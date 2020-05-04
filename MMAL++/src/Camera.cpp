@@ -232,7 +232,7 @@ int Camera::setExposureControl( ExposureControl value )
 	else if(value == ExposureControlFixedFps) mode = MMAL_PARAM_EXPOSUREMODE_FIXEDFPS;
 	else if(value == ExposureControlAntishake) mode = MMAL_PARAM_EXPOSUREMODE_ANTISHAKE;
 	else if(value == ExposureControlFireworks) mode = MMAL_PARAM_EXPOSUREMODE_FIREWORKS;
-	else error("Invalid exposure mode");
+	else return -1;
 
 	MMAL_PARAMETER_EXPOSUREMODE_T exp_mode = {{MMAL_PARAMETER_EXPOSURE_MODE,sizeof(exp_mode)}, mode};
 	return mmal_port_parameter_set( mHandle->control, &exp_mode.hdr );
