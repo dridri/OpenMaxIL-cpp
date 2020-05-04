@@ -241,10 +241,10 @@ OMX_ERRORTYPE VideoEncode::SetState( const Component::State& st )
 	OMX_ERRORTYPE ret = OMX_ErrorNone;
 
 	if ( st == StateExecuting ) {
-		bool first_setup = false;
+// 		bool first_setup = false;
 		mBuffer = mOutputPorts[201].buffer;
 		if ( mOutputPorts[201].bTunneled == false and mBuffer == nullptr ) {
-			first_setup = true;
+// 			first_setup = true;
 			AllocateOutputBuffer( 201 );
 			mBuffer = mOutputPorts[201].buffer;
 		}
