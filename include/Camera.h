@@ -86,6 +86,17 @@ public:
 		ImageFilterDeInterlaceFast,
 		ImageFilterMax = 0x7FFFFFFF
 	} ImageFilter;
+	
+	typedef struct Settings {
+		OMX_U32 nExposure;
+		OMX_U32 nAnalogGain;
+		OMX_U32 nDigitalGain;
+		OMX_U32 nLux;
+		OMX_U32 nRedGain;
+		OMX_U32 nBlueGain;
+		OMX_U32 nFocusPosition;
+	} Settings;
+
 
 	Camera( uint32_t width, uint32_t height, uint32_t device_number = 0, bool high_speed = false, uint32_t sensor_mode = 0, bool verbose = false );
 	~Camera();
@@ -109,9 +120,12 @@ public:
 	OMX_ERRORTYPE setFrameStabilisation( bool enabled );
 	OMX_ERRORTYPE setMirror( bool hrzn, bool vert );
 	OMX_ERRORTYPE setRotation( int32_t angle_degrees );
+	OMX_ERRORTYPE setInputCrop( float left, float top, float width, float height );
 
 	OMX_ERRORTYPE disableLensShading();
 	OMX_ERRORTYPE setLensShadingGrid( uint32_t grid_cell_size, uint32_t grid_width, uint32_t grid_height, uint32_t transform, const uint8_t* ls_grid );
+
+	OMX_ERRORTYPE lastSettings( Settings* settings );
 
 	const uint8_t sensorMode();
 	const uint32_t framerate();

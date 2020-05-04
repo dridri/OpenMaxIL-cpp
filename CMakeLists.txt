@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 
-if ( ${BUILD_ARCH} MATCHES "x86*" AND NOT ${CMAKE_C_COMPILER} MATCHES "arm*" )
+if ( "1" MATCHES "1" )
+# 	OR ${BUILD_ARCH} MATCHES "x86*" AND NOT ${CMAKE_C_COMPILER} MATCHES "arm*" )
 	SET( CMAKE_SYSTEM_NAME Linux )
 	SET( CMAKE_SYSTEM_VERSION 1 )
 
@@ -34,6 +35,7 @@ include_directories( /opt/vc/include )
 
 set( SOURCES
 	src/Component.cpp
+	src/Clock.cpp
 	src/Camera.cpp
 	src/NullSink.cpp
 	src/Resize.cpp
