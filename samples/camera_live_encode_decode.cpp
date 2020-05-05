@@ -19,7 +19,7 @@ int main( int ac, char** av )
 	encode->SetState( Component::StateIdle );
 
 	VideoDecode* decode = new VideoDecode( 0, VideoDecode::CodingAVC, true );
-	VideoRender* render = new VideoRender( true );
+	VideoRender* render = new VideoRender();
 	decode->SetupTunnel( render );
 	decode->SetState( Component::StateIdle );
 	render->SetState( Component::StateIdle );

@@ -45,7 +45,7 @@ void* preview_thread( void* argp )
 {
 #if 0
 	VideoDecode* decode = new VideoDecode( 1280, 720, 0, VideoDecode::CodingMJPEG, true );
-	VideoRender* render = new VideoRender( true );
+	VideoRender* render = new VideoRender();
 	decode->SetupTunnel( render );
 	decode->SetState( Component::StateIdle );
 	render->SetState( Component::StateIdle );

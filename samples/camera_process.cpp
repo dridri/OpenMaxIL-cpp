@@ -32,7 +32,7 @@ int main( int ac, char** av )
 
 	// Create camera and on-screen renderer components
 	Camera* camera = new Camera( WIDTH, HEIGHT, 0, false, SENSOR_MODE, true );
-	VideoRender* render = new VideoRender( true );
+	VideoRender* render = new VideoRender();
 
 	// Setup camera
 	camera->setFramerate( FPS );

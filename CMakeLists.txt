@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.6)
 
-if ( "1" MATCHES "1" )
-# 	OR ${BUILD_ARCH} MATCHES "x86*" AND NOT ${CMAKE_C_COMPILER} MATCHES "arm*" )
+option( cross "Cross compile" 0 )
+
+if ( ${cross} MATCHES "1" OR ${cross} MATCHES "true" OR ${cross} MATCHES "TRUE" )
+	message( " => Cross compiling" )
 	SET( CMAKE_SYSTEM_NAME Linux )
 	SET( CMAKE_SYSTEM_VERSION 1 )
 
@@ -14,8 +16,9 @@ if ( "1" MATCHES "1" )
 	SET( CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY )
 	SET( CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY )
 endif()
-
 project( "OpenMaxIL++" )
+
+message( ${CMAKE_C_COMPILER} )
 
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_DEFAULT_SOURCE -DSTANDALONE -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DTARGET_POSIX -D_LINUX -fPIC -DPIC -D_REENTRANT -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -U_FORTIFY_SOURCE" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_LIBOPENMAX=2 -DOMX -DOMX_SKIP64BIT -ftree-vectorize -pipe -DUSE_EXTERNAL_OMX -DHAVE_LIBBCM_HOST -DUSE_EXTERNAL_LIBBCM_HOST -DUSE_VCHIQ_ARM -Wno-psabi" )
@@ -52,3 +55,5 @@ add_library( "OpenMaxIL++" ${SOURCES} )
 target_link_libraries( "OpenMaxIL++" -lopenmaxil -lbcm_host -lvcsm -lvcos -lvchiq_arm -lrt -lpthread -ldl )
 
 add_subdirectory( samples )
+
+install( TARGETS "OpenMaxIL++" )

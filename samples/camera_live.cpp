@@ -11,7 +11,7 @@ int main( int ac, char** av )
 
 // 	Camera* camera = new Camera( 1280, 720, 0, true, 0, true );
 	Camera* camera = new Camera( 1640, 1232, 0, true, 4, true );
-	VideoRender* render = new VideoRender( true );
+	VideoRender* render = new VideoRender();
 
 	camera->SetupTunnelVideo( render );
 	camera->SetState( Component::StateIdle );
