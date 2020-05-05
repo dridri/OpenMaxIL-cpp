@@ -54,3 +54,18 @@ Here is a simple example using **Camera** and **VideoRender** components connect
   camera->SetCapturing( true );
 ```
 Complete example can be found in [`samples`](https://github.com/dridri/OpenMaxIL-cpp/tree/master/samples)/[`camera_live.cpp`](https://github.com/dridri/OpenMaxIL-cpp/tree/master/samples/camera_live.cpp) file
+
+### Buffers
+Any input or output port can also be manually handled instead of being connected to another component's port.
+
+#### Input buffers
+It is possible to feed a components with custom data (for example, manually giving video frames to a **VideoEncode** component), this is done with the following functions :
+* `AllocateInputBuffer( port = 0 )`
+  - This function tells that the specified port will be fed manually, needs to be called once and before setting the component to `StateIdle` state.
+  - `port` can be omitted and will be set to the first input port of the component.
+* `bool needData( uint16_t port )` :
+  - This function can be called at anytime when the component is in the `StateExecuting` state, and returns *true* if the component is ready to get input data, or *false* otherwise.
+* `void fillInput( uint16_t port, uint8_t* pBuf, uint32_t len, bool corrupted = false, bool eof = false )` :
+  - This function will actually feed the component with input data pointed by `pBuf`, and `len` bytes length.
+  - `corruped` can be set to *true* to tell the component that the data is known to be corrupted and that it should not stop operating if errors occur.
+  - `eof` should be set to *true* if the data contains a complete frame or is the last part of a frame (in case the component is fed with partial frames data)
