@@ -9,8 +9,7 @@ int main( int ac, char** av )
 	bcm_host_init();
 	OMX_Init();
 
-// 	Camera* camera = new Camera( 1280, 720, 0, true, 0, true );
-	Camera* camera = new Camera( 1640, 1232, 0, true, 4, true );
+	Camera* camera = new Camera( 1280, 720 );
 	VideoRender* render = new VideoRender();
 
 	camera->SetupTunnelVideo( render );
@@ -29,7 +28,3 @@ int main( int ac, char** av )
 
 	return 0;
 }
-
-
-
-
