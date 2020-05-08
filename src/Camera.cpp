@@ -30,6 +30,8 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 	Initialize( width, height, sensor_mode );
 	if ( high_speed ) {
 		HighSpeedMode( sensor_mode );
+	} else {
+		setSensorMode( sensor_mode );
 	}
 
 	while ( not mReady ) {
@@ -38,15 +40,13 @@ Camera::Camera( uint32_t width, uint32_t height, uint32_t device_number, bool hi
 	if ( mVerbose ) {
 		mDebugCallback( 0, "Camera %d ready\n", mDeviceNumber );
 	}
-
-// 	SendCommand( OMX_CommandStateSet, OMX_StateIdle, nullptr );
 }
 
 
 Camera::~Camera()
 {
 	if ( mVerbose ) {
-		mDebugCallback( 0, "Deleting Camera...\n" );
+		mDebugCallback( 0, "Deleting Camera %d...\n", mDeviceNumber );
 	}
 	SetCapturing( false );
 
@@ -128,68 +128,10 @@ int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 	device.nU32 = mDeviceNumber;
 	SetParameter( OMX_IndexParamCameraDeviceNumber, &device );
 
-/*
-	// Set port definition
-	OMX_PARAM_PORTDEFINITIONTYPE def;
-	OMX_INIT_STRUCTURE( def );
-	def.nPortIndex = 70;
-	GetParameter( OMX_IndexParamPortDefinition, &def );
-	def.format.video.nFrameWidth  = width;
-	def.format.video.nFrameHeight = height;
-// 	def.format.video.nSliceHeight = height / 8;
-	def.format.video.xFramerate   = 0;
-// 	def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
-	def.format.video.nStride      = 0;
-	def.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
-
-	SetParameter( OMX_IndexParamPortDefinition, &def );
-
-	// Also set it for port 71 (video port)
-	GetParameter( OMX_IndexParamPortDefinition, &def );
-	def.nPortIndex = 71;
-	SetParameter( OMX_IndexParamPortDefinition, &def );
-
-	def.nPortIndex = 72;
-	GetParameter( OMX_IndexParamPortDefinition, &def );
-	switch( sensor_mode ) {
-		case 7 :
-			def.format.image.nFrameWidth = 640;
-			def.format.image.nFrameHeight = 480;
-			break;
-		case 6 :
-			def.format.image.nFrameWidth = 1280;
-			def.format.image.nFrameHeight = 720;
-			break;
-		case 5 :
-			def.format.image.nFrameWidth = 1640;
-			def.format.image.nFrameHeight = 922;
-			break;
-		case 4 :
-			def.format.image.nFrameWidth = 1640;
-			def.format.image.nFrameHeight = 1232;
-			break;
-		case 3 :
-		case 2 :
-			def.format.image.nFrameWidth = 3240;
-			def.format.image.nFrameHeight = 2464;
-			break;
-		case 1 :
-			def.format.image.nFrameWidth = 1920;
-			def.format.image.nFrameHeight = 1080;
-			break;
-		case 0 :
-		default :
-			def.format.image.nFrameWidth = width;
-			def.format.image.nFrameHeight = height;
-			break;
+	if ( width > 0 && height > 0 ) {
+		setResolution( width, height, 71 );
+		setResolution( width, height, 72 );
 	}
-// 	def.format.image.nStride      = ( def.format.image.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
-	def.format.image.nStride      = 0;
-	def.format.image.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
-	SetParameter( OMX_IndexParamPortDefinition, &def );
-*/
-	setResolution( width, height, 71 );
-	setResolution( width, height, 72 );
 	setFramerate( 30 );
 	setBrightness( 50 );
 	setContrast( 0 );
@@ -204,27 +146,19 @@ int Camera::Initialize( uint32_t width, uint32_t height, uint32_t sensor_mode )
 }
 
 
+OMX_ERRORTYPE Camera::setFocusOverlay( bool overlay )
+{
+	OMX_CONFIG_BOOLEANTYPE box;
+	OMX_INIT_STRUCTURE( box );
+	box.bEnabled = (OMX_BOOL)overlay;
+	return SetConfig( OMX_IndexConfigDrawBoxAroundFaces, &box );
+}
+
+
 OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height, uint8_t port )
 {
-	if ( mSensorMode == 7 ) {
-		mWidth = std::min( width, 640u );
-		mHeight = std::min( height, 480u );
-	} else if ( mSensorMode == 6 ) {
-		mWidth = std::min( width, 1280u );
-		mHeight = std::min( height, 720u );
-	} else if ( mSensorMode == 5 ) {
-		mWidth = std::min( width, 1640u );
-		mHeight = std::min( height, 922u );
-	} else if ( mSensorMode == 4 ) {
-		mWidth = std::min( width, 1640u );
-		mHeight = std::min( height, 1232u );
-	} else if ( mSensorMode == 1 ) {
-		mWidth = std::min( width, 1920u );
-		mHeight = std::min( height, 1080u );
-	} else {
-		mWidth = std::min( width, 3240u );
-		mHeight = std::min( height, 2464u );
-	}
+	mWidth = width;
+	mHeight = height;
 
 	OMX_PARAM_PORTDEFINITIONTYPE def;
 	OMX_INIT_STRUCTURE( def );
@@ -245,8 +179,8 @@ OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height, uint8_t po
 		} else {
 			def.format.video.nSliceHeight = 0;
 		}
-		def.format.video.nStride      = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
-		def.format.video.nStride      = 0;
+		def.format.video.nStride = ( def.format.video.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
+		def.format.video.nStride = 0;
 		SetParameter( OMX_IndexParamPortDefinition, &def );
 
 		GetParameter( OMX_IndexParamPortDefinition, &def );
@@ -270,8 +204,8 @@ OMX_ERRORTYPE Camera::setResolution( uint32_t width, uint32_t height, uint8_t po
 		} else {
 			def.format.image.nSliceHeight = 0;
 		}
-		def.format.image.nStride      = ( def.format.image.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
-		def.format.image.nStride      = 0;
+		def.format.image.nStride = ( def.format.image.nFrameWidth + def.nBufferAlignment - 1 ) & ( ~(def.nBufferAlignment - 1) );
+		def.format.image.nStride = 0;
 		SetParameter( OMX_IndexParamPortDefinition, &def );
 	}
 
@@ -285,26 +219,7 @@ OMX_ERRORTYPE Camera::setSensorMode( uint8_t sensor_mode )
 	OMX_INIT_STRUCTURE( sensorMode );
 	sensorMode.nPortIndex = OMX_ALL;
 
-// 	if ( sensor_mode != 0 ) {
-		sensorMode.nU32 = sensor_mode;
-/*	} else {
-		if ( mWidth <= 640 && mHeight <= 480 ) {
-			sensorMode.nU32 = 7;
-		} else if ( mWidth <= 1280 && mHeight <= 720 ) {
-			sensorMode.nU32 = 6;
-		} else if ( mWidth == 1920 && mHeight == 1080 ) {
-			sensorMode.nU32 = 1;
-		} else if ( mWidth <= 1640 && mHeight <= 922 ) {
-			sensorMode.nU32 = 5;
-		} else if ( mWidth <= 1640 && mHeight <= 1232 ) {
-			sensorMode.nU32 = 4;
-		} else if ( mWidth <= 3240 && mHeight <= 2464 ) {
-			sensorMode.nU32 = 2;
-		} else {
-			sensorMode.nU32 = 0;
-		}
-	}
-*/
+	sensorMode.nU32 = sensor_mode;
 	OMX_ERRORTYPE err = SetParameter( OMX_IndexParamCameraCustomSensorConfig, &sensorMode );
 	if ( err == OMX_ErrorNone ) {
 		mSensorMode = sensorMode.nU32;
@@ -384,7 +299,7 @@ int Camera::HighSpeedMode( uint32_t sensor_mode )
 // 	pool.nHiResVideoHeight = mHeight;
 // 	pool.eHiResVideoType = OMX_COLOR_FormatYUV420PackedPlanar;
 	pool.nNumHiResStillsFrames = 2;
-	pool.nHiResStillsWidth = 3240;
+	pool.nHiResStillsWidth = 3240; // TODO : get resolution of port 72
 	pool.nHiResStillsHeight = 2464;
 	pool.eHiResStillsType = OMX_COLOR_FormatYUV420PackedPlanar;
 // 	pool.nNumLoResFrames = 2;
