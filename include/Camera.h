@@ -22,6 +22,7 @@ public:
 		WhiteBalControlIncandescent,
 		WhiteBalControlFlash,
 		WhiteBalControlHorizon,
+		WhiteBalControlGreyWorld
 	} WhiteBalControl;
 
 	typedef enum {
