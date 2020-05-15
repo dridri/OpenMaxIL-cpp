@@ -56,4 +56,6 @@ target_link_libraries( "OpenMaxIL++" -lopenmaxil -lbcm_host -lvcsm -lvcos -lvchi
 
 add_subdirectory( samples )
 
-install( TARGETS "OpenMaxIL++" )
+set( CMAKE_INSTALL_PREFIX "/opt/vc/" )
+install( TARGETS "OpenMaxIL++" LIBRARY )
+install( DIRECTORY ${CMAKE_SOURCE_DIR}/include/ DESTINATION "/opt/vc/include/OpenMaxIL++" FILES_MATCHING PATTERN "*.h*" )
