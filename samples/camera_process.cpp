@@ -41,12 +41,12 @@ int main( int ac, char** av )
 	// Tunnel preview port to on-screen renderer
 	camera->SetupTunnelPreview( render );
 
-	// Allocate buffer that will be processed manually
-	camera->AllocateOutputBuffer( 71 );
-
 	// Tell OpenMAX that components are ready
 	camera->SetState( Component::StateIdle );
 	render->SetState( Component::StateIdle );
+
+	// Allocate buffer that will be processed manually
+	camera->AllocateOutputBuffer( 71 );
 
 	// Start capturing
 	camera->SetState( Component::StateExecuting );
